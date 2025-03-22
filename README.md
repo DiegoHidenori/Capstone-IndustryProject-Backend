@@ -4,6 +4,8 @@
 
 npx sequelize-cli model:generate --name User --attributes firstName:string,lastName:string,email:string,password:string,role:string --models-path src/models --config src/config/config.json --migrations-path src/migrations
 
+npx sequelize-cli model:generate --name User --attributes firstName:string,middleName:string,lastName:string,email:string,phone:string,password:string,billingAddress:string,role:string --config src/config/config.js --migrations-path src/migrations --models-path src/models
+
 ## Guest Model
 
 npx sequelize-cli model:generate --name Guest --attributes firstName:string,lastName:string,email:string,phone:string --models-path src/models --config src/config/config.json --migrations-path src/migrations
@@ -44,16 +46,22 @@ npx sequelize-cli model:generate --name Task --attributes title:string,descripti
 
 npx sequelize-cli model:generate --name Reservation --attributes guestId:integer,roomId:integer,checkIn:date,checkOut:date,totalCost:float --models-path src/models --config src/config/config.json --migrations-path src/migrations
 
-## COMMAND TO APPLY ALL MIGRATIONS
+# RUN ALL MIGRATIONS
 
 npx sequelize-cli db:migrate --config src/config/config.js --migrations-path src/migrations
 
 ## COMMAND FOR GENERATING SEEDER FILES FOR DUMMY DATA
 
-### Room Data - Create Seeder File
+### Seeder Files
 
-npx sequelize-cli seed:generate --name initial-rooms --seeders-path src/seeders
+1. npx sequelize-cli seed:generate --name initial-rooms --seeders-path src/seeders
+2. npx sequelize-cli seed:generate --name admin-user --seeders-path src/seeders
 
 ### Room Data - Run Seeder
 
 npx sequelize-cli db:seed:all --config src/config/config.js --seeders-path src/seeders
+
+# SETUP GUIDE
+
+1. Run all migrations.
+2. Run the seeders, including the admin user seeder.

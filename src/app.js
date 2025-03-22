@@ -3,6 +3,8 @@ const cors = require("cors");
 require("express-async-errors");
 
 const roomRoutes = require("./routes/roomRoutes");
+const authRoutes = require("./routes/authRoutes");
+const userRoutes = require("./routes/userRoutes");
 
 const app = express();
 
@@ -10,6 +12,8 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use("/rooms", roomRoutes);
+app.use("/auth", authRoutes);
+app.use("/users", userRoutes);
 
 // Test Route
 app.get("/", (req, res) => {
