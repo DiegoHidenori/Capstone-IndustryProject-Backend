@@ -1,26 +1,22 @@
 require("dotenv").config();
-const { Pool } = require("pg");
+const { Sequelize } = require("sequelize");
 
-const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl:
-        process.env.NODE_ENV === "production"
-            ? { rejectUnauthorized: false }
-            : false,
+const sequelize = new Sequelize(process.env.DATABASE_URL, {
+    dialect: "postgres",
+    logging: false, // Set to true if you want SQL logs
+    dialectOptions: {
+        ssl:
+            process.env.NODE_ENV === "production"
+                ? { rejectUnauthorized: false }
+                : false,
+    },
 });
 
-pool.on("connect", () => {
-    console.log("Connected to PostgreSQL Database");
-});
+sequelize
+    .authenticate()
+    .then(() => console.log("Connected to PostgreSQL via Sequelize"))
+    .catch((err) => console.error("Sequelize connection error:", err));
 
-pool.query("SELECT NOW()", (err, res) => {
-    if (err) {
-        console.error("Database connection error:", err);
-    } else {
-        console.log("Database connected at:", res.rows[0].now);
-    }
-});
-
-module.exports = pool;
+module.exports = sequelize;
 
 // This will manage PostgreSQL connections efficiently.

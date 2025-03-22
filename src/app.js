@@ -1,13 +1,15 @@
 const express = require("express");
 const cors = require("cors");
 require("express-async-errors");
-const pool = require("./config/database");
+
+const roomRoutes = require("./routes/roomRoutes");
 
 const app = express();
 
 // Middleware
 app.use(cors());
 app.use(express.json());
+app.use("/rooms", roomRoutes);
 
 // Test Route
 app.get("/", (req, res) => {
