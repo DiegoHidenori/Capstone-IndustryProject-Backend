@@ -10,7 +10,7 @@ module.exports = {
                 type: Sequelize.INTEGER,
             },
             name: {
-                type: Sequelize.ENUM("breakfast", "lunch", "dinner"),
+                type: Sequelize.STRING,
                 allowNull: false,
             },
             price: {
