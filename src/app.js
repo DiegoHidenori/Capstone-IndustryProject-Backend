@@ -5,6 +5,7 @@ require("express-async-errors");
 const roomRoutes = require("./routes/roomRoutes");
 const authRoutes = require("./routes/authRoutes");
 const userRoutes = require("./routes/userRoutes");
+const bookingRoutes = require("./routes/bookingRoutes");
 
 const app = express();
 
@@ -14,6 +15,7 @@ app.use(express.json());
 app.use("/rooms", roomRoutes);
 app.use("/auth", authRoutes);
 app.use("/users", userRoutes);
+app.use("/api/bookings", bookingRoutes);
 
 // Test Route
 app.get("/", (req, res) => {

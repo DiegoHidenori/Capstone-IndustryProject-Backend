@@ -10,6 +10,11 @@ module.exports = (sequelize, DataTypes) => {
          */
         static associate(models) {
             // define association here
+            // One-to-Many: User has many Bookings
+            User.hasMany(models.Booking, {
+                foreignKey: "userId",
+                as: "bookings",
+            });
         }
         validPassword(password) {
             return bcrypt.compare(password, this.password);
