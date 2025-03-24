@@ -2,6 +2,14 @@
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
     async up(queryInterface, Sequelize) {
+        await queryInterface.sequelize.query(`
+            DO $$ BEGIN
+                CREATE TYPE "enum_Bookings_paymentStatus" AS ENUM ('pending', 'deposit_paid', 'fully_paid');
+            EXCEPTION
+                WHEN duplicate_object THEN null;
+            END $$;
+        `);
+
         await queryInterface.createTable("Bookings", {
             id: {
                 allowNull: false,
@@ -12,20 +20,22 @@ module.exports = {
             bookingDate: {
                 type: Sequelize.DATE,
             },
-            depositPaid: {
-                type: Sequelize.BOOLEAN,
-            },
             depositAmount: {
                 type: Sequelize.DECIMAL,
+                allowNull: false,
+            },
+            depositPaid: {
+                type: Sequelize.BOOLEAN,
+                defaultValue: false,
             },
             depositPaymentId: {
                 type: Sequelize.STRING,
             },
+            finalPaymentId: {
+                type: Sequelize.STRING,
+            },
             bookingFullyPaid: {
                 type: Sequelize.BOOLEAN,
-            },
-            fullPaymentInvoiceId: {
-                type: Sequelize.STRING,
             },
             userId: {
                 type: Sequelize.INTEGER,
@@ -58,7 +68,9 @@ module.exports = {
                 allowNull: true,
             },
             paymentStatus: {
-                type: Sequelize.STRING,
+                type: Sequelize.ENUM("pending", "deposit_paid", "fully_paid"),
+                allowNull: false,
+                defaultValue: "pending",
             },
             staffNotes: {
                 type: Sequelize.TEXT,
@@ -79,5 +91,8 @@ module.exports = {
     },
     async down(queryInterface, Sequelize) {
         await queryInterface.dropTable("Bookings");
+        await queryInterface.sequelize.query(`
+            DROP TYPE IF EXISTS "enum_Bookings_paymentStatus";
+        `);
     },
 };

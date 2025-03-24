@@ -21,17 +21,32 @@ module.exports = (sequelize, DataTypes) => {
                 foreignKey: "bookingId",
                 otherKey: "mealId",
             });
+
+            Booking.belongsToMany(models.Discount, {
+                through: "BookingDiscounts",
+                foreignKey: "bookingId",
+                otherKey: "discountId",
+            });
+
+            Booking.hasMany(models.Payment, { foreignKey: "bookingId" });
+            Booking.hasOne(models.Invoice, { foreignKey: "bookingId" });
         }
     }
 
     Booking.init(
         {
             bookingDate: DataTypes.DATE,
-            depositPaid: DataTypes.BOOLEAN,
-            depositAmount: DataTypes.DECIMAL,
+            depositAmount: {
+                type: DataTypes.DECIMAL,
+                allowNull: false,
+            },
+            depositPaid: {
+                type: DataTypes.BOOLEAN,
+                defaultValue: false,
+            },
             depositPaymentId: DataTypes.STRING,
+            finalPaymentId: DataTypes.STRING,
             bookingFullyPaid: DataTypes.BOOLEAN,
-            fullPaymentInvoiceId: DataTypes.STRING,
             userId: DataTypes.INTEGER,
             hasOvernight: DataTypes.BOOLEAN,
             firstMeal: DataTypes.STRING,
@@ -39,7 +54,11 @@ module.exports = (sequelize, DataTypes) => {
             checkoutDate: DataTypes.DATE,
             bookingPrice: DataTypes.DECIMAL,
             requirements: DataTypes.ARRAY(DataTypes.STRING),
-            paymentStatus: DataTypes.STRING,
+            paymentStatus: {
+                type: DataTypes.ENUM("pending", "deposit_paid", "fully_paid"),
+                allowNull: false,
+                defaultValue: "pending",
+            },
             staffNotes: DataTypes.TEXT,
             participantsList: DataTypes.ARRAY(DataTypes.STRING),
         },

@@ -7,6 +7,7 @@ const authRoutes = require("./routes/authRoutes");
 const userRoutes = require("./routes/userRoutes");
 const bookingRoutes = require("./routes/bookingRoutes");
 const mealRoutes = require("./routes/mealRoutes");
+const discountRoutes = require("./routes/discountRoutes");
 
 const app = express();
 
@@ -18,6 +19,7 @@ app.use("/auth", authRoutes);
 app.use("/users", userRoutes);
 app.use("/api/bookings", bookingRoutes);
 app.use("/api/meals", mealRoutes);
+app.use("/api/discounts", discountRoutes);
 
 // Test Route
 app.get("/", (req, res) => {

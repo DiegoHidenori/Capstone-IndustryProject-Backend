@@ -42,15 +42,19 @@ npx sequelize-cli model:generate --name Kitchen --attributes roomId:integer --mo
 
 ## Discount Model
 
-npx sequelize-cli model:generate --name Discount --attributes name:string,percentage:decimal,validFrom:date,validTo:date --models-path src/models --config src/config/config.json --migrations-path src/migrations
+npx sequelize-cli model:generate --name Discount --attributes name:string,description:text,type:string,value:decimal --models-path src/models --config src/config/config.js --migrations-path src/migrations
 
 ## Task Model
 
 npx sequelize-cli model:generate --name Task --attributes title:string,description:text,status:string,userId:integer,departmentId:integer --models-path src/models --config src/config/config.json --migrations-path src/migrations
 
-## Reservation Model
+## Payment Model
 
-npx sequelize-cli model:generate --name Reservation --attributes guestId:integer,roomId:integer,checkIn:date,checkOut:date,totalCost:float --models-path src/models --config src/config/config.json --migrations-path src/migrations
+npx sequelize-cli model:generate --name Payment --attributes transactionId:string,bookingId:integer,amountPaid:decimal,paymentType:enum,status:enum --models-path src/models --config src/config/config.js --migrations-path src/migrations
+
+## Invoice Model
+
+npx sequelize-cli model:generate --name Invoice --attributes bookingId:integer,totalAmount:decimal,depositRequired:decimal,status:enum --models-path src/models --config src/config/config.js --migrations-path src/migrations
 
 # MIGRATIONS
 
@@ -67,6 +71,7 @@ npx sequelize-cli db:migrate --config src/config/config.js --migrations-path src
 1. If you are still in dev and don’t mind dropping booking data (Quick and destructive)
 
     - npx sequelize-cli db:migrate:undo --name <your-create-booking-migration-file>.js --config src/config/config.js --migrations-path src/migrations
+    - npx sequelize-cli db:migrate:undo:all --config src/config/config.js --migrations-path src/migrations
     - npx sequelize-cli db:migrate
 
 2. This is what you'd do in a real production app (best practice).
