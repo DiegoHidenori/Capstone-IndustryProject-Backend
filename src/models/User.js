@@ -3,36 +3,66 @@ const bcrypt = require("bcrypt");
 
 module.exports = (sequelize, DataTypes) => {
     class User extends Model {
-        /**
-         * Helper method for defining associations.
-         * This method is not a part of Sequelize lifecycle.
-         * The `models/index` file will call this method automatically.
-         */
         static associate(models) {
-            // define association here
             // One-to-Many: User has many Bookings
             User.hasMany(models.Booking, {
                 foreignKey: "userId",
                 as: "bookings",
+                onDelete: "CASCADE",
+            });
+
+            User.hasMany(models.Invoice, {
+                foreignKey: "userId",
+                onDelete: "CASCADE",
             });
         }
-        validPassword(password) {
+
+        async validPassword(password) {
             return bcrypt.compare(password, this.password);
         }
     }
+
     User.init(
         {
-            firstName: DataTypes.STRING,
-            middleName: DataTypes.STRING,
-            lastName: DataTypes.STRING,
+            userId: {
+                allowNull: false,
+                autoIncrement: true,
+                primaryKey: true,
+                type: DataTypes.INTEGER,
+            },
+            firstName: {
+                type: DataTypes.STRING,
+                allowNull: false,
+            },
+            middleName: {
+                type: DataTypes.STRING,
+                allowNull: true,
+            },
+            lastName: {
+                type: DataTypes.STRING,
+                allowNull: false,
+            },
             email: {
                 type: DataTypes.STRING,
                 allowNull: false,
                 unique: true,
+                validate: { isEmail: true },
             },
-            phone: DataTypes.STRING,
-            password: DataTypes.STRING,
-            billingAddress: DataTypes.STRING,
+            phone: {
+                type: DataTypes.STRING,
+                allowNull: true,
+                validate: {
+                    isNumeric: true, // Ensure phone contains only numbers
+                },
+            },
+            password: {
+                type: DataTypes.STRING,
+                allowNull: false,
+            },
+            billingAddress: {
+                type: DataTypes.STRING,
+                allowNull: true,
+            },
             role: {
                 type: DataTypes.ENUM("guest", "staff", "admin"),
                 allowNull: false,
@@ -45,14 +75,12 @@ module.exports = (sequelize, DataTypes) => {
             hooks: {
                 beforeCreate: async (user) => {
                     if (user.password) {
-                        const salt = await bcrypt.genSalt(10);
-                        user.password = await bcrypt.hash(user.password, salt);
+                        user.password = await bcrypt.hash(user.password, 10);
                     }
                 },
                 beforeUpdate: async (user) => {
                     if (user.changed("password")) {
-                        const salt = await bcrypt.genSalt(10);
-                        user.password = await bcrypt.hash(user.password, salt);
+                        user.password = await bcrypt.hash(user.password, 10);
                     }
                 },
             },

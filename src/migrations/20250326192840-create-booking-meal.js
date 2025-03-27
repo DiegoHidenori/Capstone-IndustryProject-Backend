@@ -1,24 +1,23 @@
 "use strict";
 
+/** @type {import('sequelize-cli').Migration} */
 module.exports = {
     async up(queryInterface, Sequelize) {
-        await queryInterface.createTable("BookingDiscounts", {
+        await queryInterface.createTable("BookingMeals", {
             bookingId: {
                 type: Sequelize.INTEGER,
-                allowNull: false,
                 references: {
                     model: "Bookings",
-                    key: "id",
+                    key: "bookingId",
                 },
                 onUpdate: "CASCADE",
                 onDelete: "CASCADE",
             },
-            discountId: {
+            mealId: {
                 type: Sequelize.INTEGER,
-                allowNull: false,
                 references: {
-                    model: "Discounts",
-                    key: "id",
+                    model: "Meals",
+                    key: "mealId",
                 },
                 onUpdate: "CASCADE",
                 onDelete: "CASCADE",
@@ -35,14 +34,15 @@ module.exports = {
             },
         });
 
-        await queryInterface.addConstraint("BookingDiscounts", {
-            fields: ["bookingId", "discountId"],
+        // Composite primary key
+        await queryInterface.addConstraint("BookingMeals", {
+            fields: ["bookingId", "mealId"],
             type: "primary key",
-            name: "booking_discount_pkey",
+            name: "booking_meal_pkey",
         });
     },
 
     async down(queryInterface, Sequelize) {
-        await queryInterface.dropTable("BookingDiscounts");
+        await queryInterface.dropTable("BookingMeals");
     },
 };

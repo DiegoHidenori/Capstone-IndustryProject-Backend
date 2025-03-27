@@ -1,28 +1,26 @@
 "use strict";
+
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
     async up(queryInterface, Sequelize) {
         await queryInterface.createTable("Bedrooms", {
-            id: {
-                allowNull: false,
-                autoIncrement: true,
-                primaryKey: true,
-                type: Sequelize.INTEGER,
-            },
             roomId: {
                 type: Sequelize.INTEGER,
+                primaryKey: true,
                 allowNull: false,
                 references: {
                     model: "Rooms",
-                    key: "id",
+                    key: "roomId",
                 },
                 onDelete: "CASCADE",
             },
             bedroomNumber: {
                 type: Sequelize.INTEGER,
+                allowNull: false,
             },
             hasShower: {
                 type: Sequelize.BOOLEAN,
+                allowNull: true,
             },
             createdAt: {
                 allowNull: false,

@@ -17,7 +17,7 @@ module.exports = {
     // Get a single discount by ID
     getDiscountById: async (req, res) => {
         try {
-            const discount = await Discount.findByPk(req.params.id);
+            const discount = await Discount.findByPk(req.params.discountId);
             if (!discount)
                 return res.status(404).json({ message: "Discount not found" });
             res.json(discount);
@@ -32,23 +32,21 @@ module.exports = {
     // Create a new discount
     createDiscount: async (req, res) => {
         try {
-            const { name, description, type, value } = req.body;
+            const { name, description, discountType, discountValue } = req.body;
 
             // Validate type
             if (!["percentage", "fixed"].includes(type)) {
-                return res
-                    .status(400)
-                    .json({
-                        message:
-                            "Invalid discount type. Use 'percentage' or 'fixed'.",
-                    });
+                return res.status(400).json({
+                    message:
+                        "Invalid discount type. Use 'percentage' or 'fixed'.",
+                });
             }
 
             const discount = await Discount.create({
                 name,
                 description,
-                type,
-                value,
+                discountType,
+                discountValue,
             });
             res.status(201).json(discount);
         } catch (err) {
@@ -62,12 +60,17 @@ module.exports = {
     // Update a discount
     updateDiscount: async (req, res) => {
         try {
-            const discount = await Discount.findByPk(req.params.id);
+            const discount = await Discount.findByPk(req.params.discountId);
             if (!discount)
                 return res.status(404).json({ message: "Discount not found" });
 
-            const { name, description, type, value } = req.body;
-            await discount.update({ name, description, type, value });
+            const { name, description, discountType, discountValue } = req.body;
+            await discount.update({
+                name,
+                description,
+                discountType,
+                discountValue,
+            });
             res.json(discount);
         } catch (err) {
             res.status(500).json({
@@ -80,7 +83,7 @@ module.exports = {
     // Delete a discount
     deleteDiscount: async (req, res) => {
         try {
-            const discount = await Discount.findByPk(req.params.id);
+            const discount = await Discount.findByPk(req.params.discountId);
             if (!discount)
                 return res.status(404).json({ message: "Discount not found" });
 

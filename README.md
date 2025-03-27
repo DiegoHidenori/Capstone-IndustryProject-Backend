@@ -54,7 +54,7 @@ npx sequelize-cli model:generate --name Payment --attributes transactionId:strin
 
 ## Invoice Model
 
-npx sequelize-cli model:generate --name Invoice --attributes bookingId:integer,totalAmount:decimal,depositRequired:decimal,status:enum --models-path src/models --config src/config/config.js --migrations-path src/migrations
+npx sequelize-cli model:generate --name Invoice --attributes bookingId:integer,totalAmount:decimal,depositAmount:decimal,status:enum --models-path src/models --config src/config/config.js --migrations-path src/migrations
 
 # MIGRATIONS
 
@@ -72,7 +72,7 @@ npx sequelize-cli db:migrate --config src/config/config.js --migrations-path src
 
     - npx sequelize-cli db:migrate:undo --name <your-create-booking-migration-file>.js --config src/config/config.js --migrations-path src/migrations
     - npx sequelize-cli db:migrate:undo:all --config src/config/config.js --migrations-path src/migrations
-    - npx sequelize-cli db:migrate
+    - npx sequelize-cli db:migrate --config src/config/config.js --migrations-path src/migrations
 
 2. This is what you'd do in a real production app (best practice).
     - Generate a migration:
@@ -88,9 +88,13 @@ npx sequelize-cli db:migrate --config src/config/config.js --migrations-path src
 2. npx sequelize-cli seed:generate --name admin-user --seeders-path src/seeders
 3. npx sequelize-cli seed:generate --name meals --config src/config/config.js --seeders-path src/seeders
 
-### Room Data - Run Every Seeder
+### Run All Seeder Files
 
 npx sequelize-cli db:seed:all --config src/config/config.js --seeders-path src/seeders
+
+### Undo All Seeder Files
+
+npx sequelize-cli db:seed:undo:all --config src/config/config.js --seeders-path src/seeders
 
 ### Run specific seeder
 

@@ -1,13 +1,47 @@
 const { Booking, Room, User, Meal, Discount, Invoice } = require("../models");
 
-async function createInvoice(bookingId, totalAmount) {
-    const depositRequired = totalAmount * 0.2;
+async function createInvoice(bookingId, userId, totalAmount) {
+    const depositAmount = totalAmount * 0.2;
     return await Invoice.create({
         bookingId,
+        userId,
         totalAmount,
-        depositRequired,
+        depositAmount,
         status: "unpaid",
     });
+}
+
+async function calculateTotalPrice(bookingPrice, mealIds, discountIds) {
+    let totalMealCost = 0;
+    let totalDiscountAmount = 0;
+
+    if (mealIds?.length) {
+        const meals = await Meal.findAll({ where: { mealId: mealIds } });
+        totalMealCost = meals.reduce(
+            (sum, meal) => sum + parseFloat(meal.price),
+            0
+        );
+    }
+
+    if (discountIds?.length) {
+        const discounts = await Discount.findAll({
+            where: { discountId: discountIds },
+        });
+
+        for (const discount of discounts) {
+            if (discount.discountType === "percentage") {
+                totalDiscountAmount +=
+                    (parseFloat(bookingPrice) + totalMealCost) *
+                    (parseFloat(discount.discountValue) / 100);
+            } else if (discount.discountType === "fixed") {
+                totalDiscountAmount += parseFloat(discount.discountValue);
+            }
+        }
+    }
+
+    let finalPrice =
+        parseFloat(bookingPrice) + totalMealCost - totalDiscountAmount;
+    return Math.max(finalPrice, 0);
 }
 
 module.exports = {
@@ -16,18 +50,12 @@ module.exports = {
             const {
                 userId,
                 bookingDate,
-                depositPaid,
-                depositAmount,
-                depositPaymentId,
-                bookingFullyPaid,
-                fullPaymentInvoiceId,
                 hasOvernight,
                 firstMeal,
                 checkinDate,
                 checkoutDate,
                 bookingPrice,
                 requirements,
-                paymentStatus,
                 staffNotes,
                 participantsList,
                 roomIds,
@@ -41,98 +69,90 @@ module.exports = {
             }
 
             let rooms = [];
-            if (roomIds && roomIds.length > 0) {
-                rooms = await Room.findAll({ where: { id: roomIds } });
+            if (roomIds?.length) {
+                rooms = await Room.findAll({ where: { roomId: roomIds } });
                 if (rooms.length !== roomIds.length) {
                     return res.status(400).json({
                         message: "One or more room IDs are invalid",
-                        validRoomIds: rooms.map((r) => r.id),
+                        validRoomIds: rooms.map((r) => r.roomId),
                     });
                 }
             }
 
-            let meals = [];
-            let totalMealCost = 0;
-            if (mealIds && mealIds.length > 0) {
-                meals = await Meal.findAll({ where: { id: mealIds } });
-                if (meals.length !== mealIds.length) {
-                    return res.status(400).json({
-                        message: "One or more meal IDs are invalid",
-                        validMealIds: meals.map((m) => m.id),
-                    });
-                }
+            const finalPrice = await calculateTotalPrice(
+                bookingPrice,
+                mealIds,
+                discountIds
+            );
 
-                // 💰 Calculate total meal cost
-                totalMealCost = meals.reduce(
-                    (sum, meal) => sum + parseFloat(meal.price),
-                    0
-                );
-            }
+            // let meals = [];
+            // let totalMealCost = 0;
+            // if (mealIds?.length) {
+            //     meals = await Meal.findAll({ where: { mealId: mealIds } });
+            //     if (meals.length !== mealIds.length) {
+            //         return res.status(400).json({
+            //             message: "One or more meal IDs are invalid",
+            //             validMealIds: meals.map((m) => m.mealId),
+            //         });
+            //     }
 
-            let discounts = [];
-            let totalDiscountAmount = 0;
-            if (discountIds && discountIds.length > 0) {
-                discounts = await Discount.findAll({
-                    where: { id: discountIds },
-                });
-                if (discounts.length !== discountIds.length) {
-                    return res.status(400).json({
-                        message: "One or more discount IDs are invalid",
-                        validDiscountIds: discounts.map((d) => d.id),
-                    });
-                }
+            //     totalMealCost = meals.reduce(
+            //         (sum, meal) => sum + parseFloat(meal.price),
+            //         0
+            //     );
+            // }
 
-                // Calculate the total discount amount
-                for (const discount of discounts) {
-                    if (discount.type === "percentage") {
-                        totalDiscountAmount +=
-                            (parseFloat(bookingPrice) + totalMealCost) *
-                            (parseFloat(discount.value) / 100);
-                    } else if (discount.type === "fixed") {
-                        totalDiscountAmount += parseFloat(discount.value);
-                    }
-                }
-            }
+            // let discounts = [];
+            // let totalDiscountAmount = 0;
+            // if (discountIds?.length) {
+            //     discounts = await Discount.findAll({
+            //         where: { discountId: discountIds },
+            //     });
+            //     if (discounts.length !== discountIds.length) {
+            //         return res.status(400).json({
+            //             message: "One or more discount IDs are invalid",
+            //             validDiscountIds: discounts.map((d) => d.discountId),
+            //         });
+            //     }
 
-            // 🧾 Final price = booking price + meal cost (optional)
-            const finalPrice =
-                parseFloat(bookingPrice) + totalMealCost - totalDiscountAmount;
-            if (finalPrice < 0) finalPrice = 0;
+            //     for (const discount of discounts) {
+            //         if (discount.discountType === "percentage") {
+            //             totalDiscountAmount +=
+            //                 (parseFloat(bookingPrice) + totalMealCost) *
+            //                 (parseFloat(discount.discountValue) / 100);
+            //         } else if (discount.discountType === "fixed") {
+            //             totalDiscountAmount += parseFloat(
+            //                 discount.discountValue
+            //             );
+            //         }
+            //     }
+            // }
+
+            // Final price = booking price + meal cost (optional)
+            // let finalPrice =
+            //     parseFloat(bookingPrice) + totalMealCost - totalDiscountAmount;
+            // finalPrice = Math.max(finalPrice, 0);
 
             const booking = await Booking.create({
                 userId,
                 bookingDate,
-                depositPaid,
-                depositAmount,
-                depositPaymentId,
-                bookingFullyPaid,
-                fullPaymentInvoiceId,
                 hasOvernight,
                 firstMeal,
                 checkinDate,
                 checkoutDate,
                 bookingPrice: finalPrice,
                 requirements,
-                paymentStatus,
                 staffNotes,
                 participantsList,
             });
 
-            if (roomIds && roomIds.length > 0) {
-                await booking.setRooms(roomIds); // Many-to-many
-            }
+            if (roomIds?.length) await booking.setRooms(roomIds);
+            if (mealIds?.length) await booking.setMeals(mealIds);
+            if (discountIds?.length) await booking.setDiscounts(discountIds);
 
-            if (mealIds && mealIds.length > 0) {
-                await booking.setMeals(mealIds);
-            }
+            await createInvoice(booking.bookingId, user.userId, finalPrice);
 
-            if (discountIds && discountIds.length > 0) {
-                await booking.setDiscounts(discountIds);
-            }
-
-            await createInvoice(booking.id, finalPrice);
-
-            const fullBooking = await Booking.findByPk(booking.id, {
+            const fullBooking = await Booking.findByPk(booking.bookingId, {
                 include: [Room, User, Meal, Discount, Invoice],
             });
 
@@ -164,57 +184,79 @@ module.exports = {
     // Get a single booking
     getBookingById: async (req, res) => {
         try {
-            const booking = await Booking.findByPk(req.params.id, {
+            console.log("Fetching booking with ID:", req.params.bookingId);
+            const booking = await Booking.findByPk(req.params.bookingId, {
                 include: [Room, User, Meal, Discount, Invoice],
             });
 
-            if (!booking)
+            if (!booking) {
+                console.log("Booking not found for ID:", req.params.bookingId);
                 return res.status(404).json({ message: "Booking not found" });
+            }
 
-            let originalPrice = parseFloat(booking.bookingPrice);
-            let mealTotal = booking.Meals.reduce(
-                (sum, meal) => sum + parseFloat(meal.price),
-                0
-            );
+            console.log("Fetched Booking:", JSON.stringify(booking, null, 2));
+
+            // let originalPrice = parseFloat(booking.bookingPrice);
+            // let mealTotal = booking.Meals.reduce(
+            //     (sum, meal) => sum + parseFloat(meal.price),
+            //     0
+            // );
 
             let discountBreakdown = [];
             let totalDiscountAmount = 0;
+
+            console.log("Starting for loop...");
             for (const discount of booking.Discounts) {
                 let discountAmount = 0;
-                if (discount.type === "percentage") {
+                if (discount.discountType === "percentage") {
                     discountAmount =
-                        (originalPrice + mealTotal) *
-                        (parseFloat(discount.value) / 100);
-                } else if (discount.type === "fixed") {
-                    discountAmount = parseFloat(discount.value);
+                        (parseFloat(booking.bookingPrice) +
+                            booking.Meals.reduce(
+                                (sum, meal) => sum + parseFloat(meal.price),
+                                0
+                            )) *
+                        (parseFloat(discount.discountValue) / 100);
+                } else if (discount.discountType === "fixed") {
+                    discountAmount = parseFloat(discount.discountValue);
                 }
 
                 totalDiscountAmount += discountAmount;
 
+                console.log("Pushing to discountBreakdown...");
                 discountBreakdown.push({
                     discountName: discount.name,
-                    type: discount.type,
-                    value: discount.value,
+                    type: discount.discountType,
+                    value: discount.discountValue,
                     discountAmount: discountAmount.toFixed(2),
                 });
+
+                console.log("-----------------------ASDKFASODFJAOSIDJF");
             }
 
-            let finalPrice = originalPrice + mealTotal - totalDiscountAmount;
-            if (finalPrice < 0) finalPrice = 0;
+            // let finalPrice = originalPrice + mealTotal - totalDiscountAmount;
+            // if (finalPrice < 0) finalPrice = 0;
+
+            // if (booking.bookingPrice.toFixed(2)) {
+            //     console.log("TRUE");
+            // } else {
+            //     console.log("NOT TRUE");
+            // }
+            console.log("aosidjfoisajd", booking);
 
             const response = {
-                id: booking.id,
+                id: booking.bookingId,
                 bookingDate: booking.bookingDate,
-                originalPrice: (originalPrice + mealTotal).toFixed(2),
+                finalPrice: parseFloat(booking.bookingPrice).toFixed(2),
                 discountBreakdown,
                 totalDiscountAmount: totalDiscountAmount.toFixed(2),
-                finalPrice: finalPrice.toFixed(2),
+                discountBreakdown,
                 Rooms: booking.Rooms,
                 Meals: booking.Meals,
                 Discounts: booking.Discounts,
                 Invoice: booking.Invoice,
                 User: booking.User,
             };
+            console.log("filled response const var");
 
             res.json(response);
         } catch (err) {
@@ -229,18 +271,12 @@ module.exports = {
         try {
             const {
                 bookingDate,
-                depositPaid,
-                depositAmount,
-                depositPaymentId,
-                bookingFullyPaid,
-                fullPaymentInvoiceId,
                 hasOvernight,
                 firstMeal,
                 checkinDate,
                 checkoutDate,
                 bookingPrice,
                 requirements,
-                paymentStatus,
                 staffNotes,
                 participantsList,
                 roomIds,
@@ -248,88 +284,100 @@ module.exports = {
                 discountIds,
             } = req.body;
 
-            const booking = await Booking.findByPk(req.params.id);
+            const booking = await Booking.findByPk(req.params.bookingId, {
+                include: [Invoice],
+            });
             if (!booking)
                 return res.status(404).json({ message: "Booking not found" });
 
-            let finalPrice = parseFloat(bookingPrice);
-            let mealTotal = 0;
+            let finalPrice = await calculateTotalPrice(
+                bookingPrice,
+                mealIds,
+                discountIds
+            );
 
-            // Validate and fetch rooms
-            if (roomIds) {
-                const rooms = await Room.findAll({ where: { id: roomIds } });
-                if (rooms.length !== roomIds.length) {
-                    return res.status(400).json({
-                        message: "One or more room IDs are invalid",
-                        validRoomIds: rooms.map((r) => r.id),
-                    });
-                }
-                await booking.setRooms(roomIds);
-            }
+            // if (roomIds) {
+            //     const rooms = await Room.findAll({
+            //         where: { roomId: roomIds },
+            //     });
+            //     if (rooms.length !== roomIds.length) {
+            //         return res.status(400).json({
+            //             message: "One or more room IDs are invalid",
+            //             validRoomIds: rooms.map((r) => r.roomId),
+            //         });
+            //     }
+            //     await booking.setRooms(roomIds);
+            // }
 
-            // Validate and fetch meals
-            if (mealIds) {
-                const meals = await Meal.findAll({ where: { id: mealIds } });
-                if (meals.length !== mealIds.length) {
-                    return res.status(400).json({
-                        message: "One or more meal IDs are invalid",
-                        validMealIds: meals.map((m) => m.id),
-                    });
-                }
-                mealTotal = meals.reduce(
-                    (sum, meal) => sum + parseFloat(meal.price),
-                    0
-                );
-                await booking.setMeals(mealIds);
-            }
+            // if (mealIds) {
+            //     const meals = await Meal.findAll({
+            //         where: { mealId: mealIds },
+            //     });
+            //     if (meals.length !== mealIds.length) {
+            //         return res.status(400).json({
+            //             message: "One or more meal IDs are invalid",
+            //             validMealIds: meals.map((m) => m.mealId),
+            //         });
+            //     }
+            //     mealTotal = meals.reduce(
+            //         (sum, meal) => sum + parseFloat(meal.price),
+            //         0
+            //     );
+            //     await booking.setMeals(mealIds);
+            // }
 
-            // Validate and fetch discounts
-            let totalDiscountAmount = 0;
-            if (discountIds) {
-                const discounts = await Discount.findAll({
-                    where: { id: discountIds },
-                });
-                if (discounts.length !== discountIds.length) {
-                    return res.status(400).json({
-                        message: "One or more discount IDs are invalid",
-                        validDiscountIds: discounts.map((d) => d.id),
-                    });
-                }
-                for (const discount of discounts) {
-                    if (discount.type === "percentage") {
-                        totalDiscountAmount +=
-                            (finalPrice + mealTotal) *
-                            (parseFloat(discount.value) / 100);
-                    } else if (discount.type === "fixed") {
-                        totalDiscountAmount += parseFloat(discount.value);
-                    }
-                }
-                await booking.setDiscounts(discountIds);
-            }
+            // let totalDiscountAmount = 0;
+            // if (discountIds) {
+            //     const discounts = await Discount.findAll({
+            //         where: { discountId: discountIds },
+            //     });
+            //     if (discounts.length !== discountIds.length) {
+            //         return res.status(400).json({
+            //             message: "One or more discount IDs are invalid",
+            //             validDiscountIds: discounts.map((d) => d.discountId),
+            //         });
+            //     }
+            //     for (const discount of discounts) {
+            //         if (discount.discountType === "percentage") {
+            //             totalDiscountAmount +=
+            //                 (finalPrice + mealTotal) *
+            //                 (parseFloat(discount.discountValue) / 100);
+            //         } else if (discount.discountType === "fixed") {
+            //             totalDiscountAmount += parseFloat(
+            //                 discount.discountValue
+            //             );
+            //         }
+            //     }
+            //     await booking.setDiscounts(discountIds);
+            // }
 
-            // Recalculate final price
-            finalPrice = finalPrice + mealTotal - totalDiscountAmount;
-            if (finalPrice < 0) finalPrice = 0;
+            // finalPrice = finalPrice + mealTotal - totalDiscountAmount;
+            // finalPrice = Math.max(finalPrice, 0);
 
             await booking.update({
                 bookingDate,
-                depositPaid,
-                depositAmount,
-                depositPaymentId,
-                bookingFullyPaid,
-                fullPaymentInvoiceId,
                 hasOvernight,
                 firstMeal,
                 checkinDate,
                 checkoutDate,
                 bookingPrice: finalPrice,
                 requirements,
-                paymentStatus,
                 staffNotes,
                 participantsList,
             });
 
-            const updatedBooking = await Booking.findByPk(booking.id, {
+            if (roomIds?.length) await booking.setRooms(roomIds);
+            if (mealIds?.length) await booking.setMeals(mealIds);
+            if (discountIds?.length) await booking.setDiscounts(discountIds);
+
+            if (booking.Invoice) {
+                await booking.Invoice.update({
+                    totalAmount: finalPrice,
+                    depositAmount: finalPrice * 0.2, // Recalculate deposit
+                });
+            }
+
+            const updatedBooking = await Booking.findByPk(booking.bookingId, {
                 include: [Room, User, Meal, Discount, Invoice],
             });
 
@@ -345,7 +393,7 @@ module.exports = {
     // Delete a booking
     deleteBooking: async (req, res) => {
         try {
-            const booking = await Booking.findByPk(req.params.id);
+            const booking = await Booking.findByPk(req.params.bookingId);
             if (!booking)
                 return res.status(404).json({ message: "Booking not found" });
 

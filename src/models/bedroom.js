@@ -13,9 +13,24 @@ module.exports = (sequelize, DataTypes) => {
 
     Bedroom.init(
         {
-            roomId: DataTypes.INTEGER,
-            bedroomNumber: DataTypes.INTEGER,
-            hasShower: DataTypes.BOOLEAN,
+            roomId: {
+                allowNull: false,
+                primaryKey: true,
+                type: DataTypes.INTEGER,
+                references: {
+                    model: "Rooms",
+                    key: "roomId",
+                },
+                onDelete: "CASCADE",
+            },
+            bedroomNumber: {
+                type: DataTypes.INTEGER,
+                allowNull: false,
+            },
+            hasShower: {
+                type: DataTypes.BOOLEAN,
+                allowNull: true,
+            },
         },
         {
             sequelize,

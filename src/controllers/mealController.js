@@ -17,7 +17,7 @@ module.exports = {
     // Get one meal
     getMealById: async (req, res) => {
         try {
-            const meal = await Meal.findByPk(req.params.id);
+            const meal = await Meal.findByPk(req.params.mealId);
             if (!meal)
                 return res.status(404).json({ message: "Meal not found" });
             res.json(meal);
@@ -46,7 +46,7 @@ module.exports = {
     // Update a meal
     updateMeal: async (req, res) => {
         try {
-            const meal = await Meal.findByPk(req.params.id);
+            const meal = await Meal.findByPk(req.params.mealId);
             if (!meal)
                 return res.status(404).json({ message: "Meal not found" });
 
@@ -64,7 +64,7 @@ module.exports = {
     // Delete a meal
     deleteMeal: async (req, res) => {
         try {
-            const meal = await Meal.findByPk(req.params.id);
+            const meal = await Meal.findByPk(req.params.mealId);
             if (!meal)
                 return res.status(404).json({ message: "Meal not found" });
 

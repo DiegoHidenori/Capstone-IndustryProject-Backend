@@ -1,5 +1,6 @@
 "use strict";
 
+/** @type {import('sequelize-cli').Migration} */
 module.exports = {
     async up(queryInterface, Sequelize) {
         await queryInterface.createTable("Payments", {
@@ -14,12 +15,12 @@ module.exports = {
                 allowNull: false,
                 unique: true,
             },
-            bookingId: {
+            invoiceId: {
                 type: Sequelize.INTEGER,
                 allowNull: false,
                 references: {
-                    model: "Bookings",
-                    key: "id",
+                    model: "Invoices",
+                    key: "invoiceId",
                 },
                 onUpdate: "CASCADE",
                 onDelete: "CASCADE",
@@ -38,11 +39,6 @@ module.exports = {
                 defaultValue: "pending",
             },
             createdAt: {
-                allowNull: false,
-                type: Sequelize.DATE,
-                defaultValue: Sequelize.fn("NOW"),
-            },
-            updatedAt: {
                 allowNull: false,
                 type: Sequelize.DATE,
                 defaultValue: Sequelize.fn("NOW"),

@@ -1,10 +1,14 @@
 "use strict";
+
 const { Model } = require("sequelize");
 
 module.exports = (sequelize, DataTypes) => {
     class Payment extends Model {
         static associate(models) {
-            Payment.belongsTo(models.Booking, { foreignKey: "bookingId" });
+            Payment.belongsTo(models.Invoice, {
+                foreignKey: "invoiceId",
+                onDelete: "CASCADE",
+            });
         }
     }
 
@@ -15,12 +19,12 @@ module.exports = (sequelize, DataTypes) => {
                 allowNull: false,
                 unique: true,
             },
-            bookingId: {
+            invoiceId: {
                 type: DataTypes.INTEGER,
                 allowNull: false,
                 references: {
-                    model: "Bookings",
-                    key: "id",
+                    model: "Invoices",
+                    key: "invoiceId",
                 },
                 onUpdate: "CASCADE",
                 onDelete: "CASCADE",

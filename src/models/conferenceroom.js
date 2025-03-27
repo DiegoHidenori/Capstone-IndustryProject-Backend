@@ -13,10 +13,28 @@ module.exports = (sequelize, DataTypes) => {
 
     ConferenceRoom.init(
         {
-            roomId: DataTypes.INTEGER,
-            seatingPlan: DataTypes.STRING,
-            numChairs: DataTypes.INTEGER,
-            numTables: DataTypes.INTEGER,
+            roomId: {
+                allowNull: false,
+                primaryKey: true,
+                type: DataTypes.INTEGER,
+                references: {
+                    model: "Rooms",
+                    key: "roomId",
+                },
+                onDelete: "CASCADE",
+            },
+            seatingPlan: {
+                type: DataTypes.STRING,
+                allowNull: true,
+            },
+            numChairs: {
+                type: DataTypes.INTEGER,
+                allowNull: true,
+            },
+            numTables: {
+                type: DataTypes.INTEGER,
+                allowNull: true,
+            },
         },
         {
             sequelize,

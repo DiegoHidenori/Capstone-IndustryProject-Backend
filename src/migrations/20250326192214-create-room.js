@@ -1,40 +1,38 @@
+"use strict";
+
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
     async up(queryInterface, Sequelize) {
-        await queryInterface.createTable("Users", {
-            id: {
+        await queryInterface.createTable("Rooms", {
+            roomId: {
                 allowNull: false,
                 autoIncrement: true,
                 primaryKey: true,
                 type: Sequelize.INTEGER,
             },
-            firstName: {
+            roomName: {
                 type: Sequelize.STRING,
-            },
-            middleName: {
-                type: Sequelize.STRING,
-            },
-            lastName: {
-                type: Sequelize.STRING,
-            },
-            email: {
-                type: Sequelize.STRING,
-                unique: true,
                 allowNull: false,
             },
-            phone: {
+            roomType: {
                 type: Sequelize.STRING,
-            },
-            password: {
-                type: Sequelize.STRING,
-            },
-            billingAddress: {
-                type: Sequelize.STRING,
-            },
-            role: {
-                type: Sequelize.ENUM("guest", "staff", "admin"),
                 allowNull: false,
-                defaultValue: "guest",
+            },
+            roomPricePerNight: {
+                type: Sequelize.INTEGER,
+                allowNull: true,
+            },
+            roomDescription: {
+                type: Sequelize.TEXT,
+                allowNull: true,
+            },
+            maxCapacity: {
+                type: Sequelize.INTEGER,
+                allowNull: true,
+            },
+            needsCleaning: {
+                type: Sequelize.BOOLEAN,
+                allowNull: true,
             },
             createdAt: {
                 allowNull: false,
@@ -47,6 +45,6 @@ module.exports = {
         });
     },
     async down(queryInterface, Sequelize) {
-        await queryInterface.dropTable("Users");
+        await queryInterface.dropTable("Rooms");
     },
 };

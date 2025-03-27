@@ -1,9 +1,10 @@
 "use strict";
+
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
     async up(queryInterface, Sequelize) {
         await queryInterface.createTable("Meals", {
-            id: {
+            mealId: {
                 allowNull: false,
                 autoIncrement: true,
                 primaryKey: true,
@@ -15,6 +16,7 @@ module.exports = {
             },
             price: {
                 type: Sequelize.DECIMAL,
+                allowNull: true,
             },
             createdAt: {
                 allowNull: false,

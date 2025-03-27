@@ -13,7 +13,16 @@ module.exports = (sequelize, DataTypes) => {
 
     DiningRoom.init(
         {
-            roomId: DataTypes.INTEGER,
+            roomId: {
+                allowNull: false,
+                primaryKey: true,
+                type: DataTypes.INTEGER,
+                references: {
+                    model: "Rooms",
+                    key: "roomId",
+                },
+                onDelete: "CASCADE",
+            },
         },
         {
             sequelize,

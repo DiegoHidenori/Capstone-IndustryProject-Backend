@@ -9,6 +9,7 @@ const bookingRoutes = require("./routes/bookingRoutes");
 const mealRoutes = require("./routes/mealRoutes");
 const discountRoutes = require("./routes/discountRoutes");
 const paymentRoutes = require("./routes/paymentRoutes");
+const invoiceRoutes = require("./routes/invoiceRoutes");
 
 const app = express();
 
@@ -22,6 +23,7 @@ app.use("/api/bookings", bookingRoutes);
 app.use("/api/meals", mealRoutes);
 app.use("/api/discounts", discountRoutes);
 app.use("/payments", paymentRoutes);
+app.use("/invoices", invoiceRoutes);
 
 // Test Route
 app.get("/", (req, res) => {

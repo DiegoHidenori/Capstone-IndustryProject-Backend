@@ -13,7 +13,7 @@ module.exports = (sequelize, DataTypes) => {
 
             // Many-to-Many with Booking
             Room.belongsToMany(models.Booking, {
-                through: "BookingRooms",
+                through: { model: "BookingRooms", schema: "public" },
                 foreignKey: "roomId",
                 otherKey: "bookingId",
             });
@@ -22,12 +22,36 @@ module.exports = (sequelize, DataTypes) => {
 
     Room.init(
         {
-            roomName: DataTypes.STRING,
-            roomType: DataTypes.STRING,
-            pricePerNight: DataTypes.INTEGER,
-            description: DataTypes.TEXT,
-            maxCapacity: DataTypes.INTEGER,
-            needsCleaning: DataTypes.BOOLEAN,
+            roomId: {
+                allowNull: false,
+                autoIncrement: true,
+                primaryKey: true,
+                type: DataTypes.INTEGER,
+            },
+            roomName: {
+                type: DataTypes.STRING,
+                allowNull: false,
+            },
+            roomType: {
+                type: DataTypes.STRING,
+                allowNull: false,
+            },
+            roomPricePerNight: {
+                type: DataTypes.INTEGER,
+                allowNull: true,
+            },
+            roomDescription: {
+                type: DataTypes.TEXT,
+                allowNull: true,
+            },
+            maxCapacity: {
+                type: DataTypes.INTEGER,
+                allowNull: true,
+            },
+            needsCleaning: {
+                type: DataTypes.BOOLEAN,
+                allowNull: true,
+            },
         },
         {
             sequelize,

@@ -5,53 +5,76 @@ module.exports = {
     checkout: async (req, res) => {
         try {
             console.log("Received body: ", req.body);
-            const { bookingId, paymentType, amountPaid } = req.body;
+            const { invoiceId, paymentType, amountPaid } = req.body;
 
-            if (!bookingId || !amountPaid || !paymentType) {
+            if (!invoiceId || !amountPaid || !paymentType) {
                 return res.status(400).json({
                     message: "Missing required fields",
-                    receivedData: req.body, // Debugging: Show received data
+                    receivedData: req.body,
                 });
             }
 
-            // Validate booking
-            const booking = await Booking.findByPk(bookingId);
-            if (!booking) {
-                return res.status(404).json({ message: "Booking not found" });
+            const invoice = await Invoice.findByPk(invoiceId);
+            if (!invoice) {
+                return res.status(404).json({ message: "Invoice not found" });
             }
 
-            let amountToPay = 0;
+            let expectedAmount = 0;
             if (paymentType === "deposit") {
-                amountToPay = booking.bookingPrice * 0.2; // 20% deposit
-            } else if (paymentType === "full") {
-                amountToPay = booking.bookingPrice - booking.depositAmount; // Remaining balance
+                expectedAmount = invoice.depositAmount;
+            } else if (paymentType === "final_payment") {
+                expectedAmount = invoice.totalAmount - invoice.depositAmount;
             } else {
                 return res
                     .status(400)
                     .json({ message: "Invalid payment type" });
             }
 
-            // Simulating payment processing
-            const fakeTransactionId = `txn_${Math.floor(
-                Math.random() * 1000000
-            )}`;
+            // Validate if amountPaid meets expected amount
+            if (amountPaid < expectedAmount) {
+                return res.status(400).json({
+                    message: `Invalid payment amount. Expected at least: $${expectedAmount}`,
+                });
+            }
 
-            // Save payment record
+            // ✅ Generate a unique transaction ID
+            const transactionId = `txn_${Math.floor(Math.random() * 1000000)}`;
+
+            // ✅ Save payment with transactionId
             const payment = await Payment.create({
-                bookingId,
-                amountPaid: amountToPay,
+                invoiceId,
+                transactionId,
+                amountPaid,
                 paymentType,
-                transactionId: fakeTransactionId,
-                status: "pending", // Will be updated via webhook
+                status: "pending",
             });
+
+            console.log("✅ Payment Created:", payment);
+
+            // Simulate webhook call (Pretend this is an external payment gateway)
+            setTimeout(async () => {
+                console.log(
+                    `✅ Simulated payment for Transaction: ${transactionId}`
+                );
+
+                // Call webhook to update system
+                await fetch("http://localhost:5000/payments/webhook", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        transactionId, // ✅ Use transactionId instead of invoiceId
+                        status: "successful",
+                    }),
+                });
+            }, 2000); // Simulated delay
 
             res.json({
                 message: "Payment initiated, waiting for confirmation",
-                transactionId: fakeTransactionId,
-                amount: amountToPay,
+                transactionId,
+                expectedAmount,
             });
         } catch (err) {
-            console.error(err);
+            console.error("Error in checkout:", err);
             res.status(500).json({
                 message: "Error processing payment",
                 error: err,
@@ -64,32 +87,92 @@ module.exports = {
         try {
             const { transactionId, status } = req.body;
 
-            // Find the payment
+            console.log(
+                `🔍 Webhook received for Transaction: ${transactionId} with status: ${status}`
+            );
+
+            // ✅ Find payment using transactionId
             const payment = await Payment.findOne({ where: { transactionId } });
+
             if (!payment) {
+                console.error(
+                    `❌ Payment not found for transaction: ${transactionId}`
+                );
                 return res.status(404).json({ message: "Payment not found" });
             }
 
-            // Update payment status
+            console.log(
+                `✅ Payment found: ${payment.transactionId} (Current Status: ${payment.status})`
+            );
+
+            // ✅ Update payment status
             payment.status = status;
             await payment.save();
+            console.log(
+                `✅ Payment ${payment.transactionId} updated to: ${status}`
+            );
 
-            // If payment is successful, update booking paymentStatus
-            if (status === "successful") {
-                const booking = await Booking.findByPk(payment.bookingId);
-                if (booking) {
-                    if (payment.amount === booking.bookingPrice * 0.2) {
-                        booking.paymentStatus = "deposit_paid";
-                    } else {
-                        booking.paymentStatus = "fully_paid";
-                    }
-                    await booking.save();
-                }
+            // ✅ Find invoice linked to this payment
+            const invoice = await Invoice.findByPk(payment.invoiceId);
+            if (!invoice) {
+                console.error(
+                    `Invoice not found for payment: ${payment.transactionId}`
+                );
+                return res.status(404).json({ message: "Invoice not found" });
             }
 
-            res.json({ message: "Payment status updated" });
+            console.log(
+                `✅ Invoice found: ${invoice.invoiceId} (Current Status: ${invoice.status})`
+            );
+
+            // ✅ Find booking linked to the invoice
+            const booking = await Booking.findByPk(invoice.bookingId);
+            if (!booking) {
+                console.error(`Booking not found for invoice: ${invoice.id}`);
+                return res.status(404).json({ message: "Booking not found" });
+            }
+
+            console.log(
+                `✅ Booking found: $booking.bookingId} (Current Payment Status: ${invoice.status})`
+            );
+
+            // ✅ Calculate total paid amount for the invoice
+            const totalPaid = await Payment.sum("amountPaid", {
+                where: { invoiceId: invoice.invoiceId, status: "successful" },
+            });
+
+            console.log(
+                `💰 Total Paid for Invoice ${invoice.invoiceId}: $${totalPaid}`
+            );
+            console.log(
+                `💳 Invoice Total: $${invoice.totalAmount}, Deposit Required: $${invoice.depositAmount}`
+            );
+
+            // ✅ Update invoice status based on total paid
+            if (totalPaid >= invoice.totalAmount) {
+                invoice.status = "fully_paid";
+            } else if (totalPaid >= invoice.depositAmount) {
+                invoice.status = "deposit_paid";
+            }
+            await invoice.save();
+
+            console.log(
+                `✅ Invoice ${invoice.invoiceId} updated to: ${invoice.status}`
+            );
+
+            // // ✅ Sync booking payment status with invoice
+            // booking.paymentStatus = invoice.status;
+            // await booking.save();
+            // console.log(
+            //     `✅ Booking ${booking.bookingId} payment status updated to: ${booking.paymentStatus}`
+            // );
+
+            res.json({
+                message: "Payment status updated successfully",
+                invoiceStatus: invoice.status,
+            });
         } catch (err) {
-            console.error(err);
+            console.error("❌ Webhook Error:", err);
             res.status(500).json({
                 message: "Error processing webhook",
                 error: err,

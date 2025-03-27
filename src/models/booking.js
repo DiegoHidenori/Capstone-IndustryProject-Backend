@@ -6,7 +6,7 @@ module.exports = (sequelize, DataTypes) => {
         static associate(models) {
             // Many-to-Many with Room
             Booking.belongsToMany(models.Room, {
-                through: "BookingRooms",
+                through: { model: "BookingRooms", schema: "public" },
                 foreignKey: "bookingId",
                 otherKey: "roomId",
             });
@@ -17,50 +17,73 @@ module.exports = (sequelize, DataTypes) => {
             });
 
             Booking.belongsToMany(models.Meal, {
-                through: "BookingMeals",
+                through: { model: "BookingMeals", schema: "public" }, // ✅ Explicitly set schema
                 foreignKey: "bookingId",
                 otherKey: "mealId",
             });
 
             Booking.belongsToMany(models.Discount, {
-                through: "BookingDiscounts",
+                through: { model: "BookingDiscounts", schema: "public" }, // ✅ Explicitly set schema
                 foreignKey: "bookingId",
                 otherKey: "discountId",
             });
 
-            Booking.hasMany(models.Payment, { foreignKey: "bookingId" });
-            Booking.hasOne(models.Invoice, { foreignKey: "bookingId" });
+            // ✅ Booking has One Invoice (Payments are linked to Invoices)
+            Booking.hasOne(models.Invoice, {
+                foreignKey: "bookingId",
+                onDelete: "CASCADE",
+            });
         }
     }
 
     Booking.init(
         {
-            bookingDate: DataTypes.DATE,
-            depositAmount: {
-                type: DataTypes.DECIMAL,
+            bookingId: {
+                allowNull: false,
+                autoIncrement: true,
+                primaryKey: true,
+                type: DataTypes.INTEGER,
+            },
+            bookingDate: {
+                type: DataTypes.DATE,
                 allowNull: false,
             },
-            depositPaid: {
+            userId: {
+                type: DataTypes.INTEGER,
+                allowNull: false,
+            },
+            hasOvernight: {
                 type: DataTypes.BOOLEAN,
-                defaultValue: false,
-            },
-            depositPaymentId: DataTypes.STRING,
-            finalPaymentId: DataTypes.STRING,
-            bookingFullyPaid: DataTypes.BOOLEAN,
-            userId: DataTypes.INTEGER,
-            hasOvernight: DataTypes.BOOLEAN,
-            firstMeal: DataTypes.STRING,
-            checkinDate: DataTypes.DATE,
-            checkoutDate: DataTypes.DATE,
-            bookingPrice: DataTypes.DECIMAL,
-            requirements: DataTypes.ARRAY(DataTypes.STRING),
-            paymentStatus: {
-                type: DataTypes.ENUM("pending", "deposit_paid", "fully_paid"),
                 allowNull: false,
-                defaultValue: "pending",
             },
-            staffNotes: DataTypes.TEXT,
-            participantsList: DataTypes.ARRAY(DataTypes.STRING),
+            firstMeal: {
+                type: DataTypes.STRING,
+                allowNull: true,
+            },
+            checkinDate: {
+                type: DataTypes.DATE,
+                allowNull: false,
+            },
+            checkoutDate: {
+                type: DataTypes.DATE,
+                allowNull: false,
+            },
+            bookingPrice: {
+                type: DataTypes.DECIMAL,
+                allowNull: true,
+            }, // Invoice depends on this
+            requirements: {
+                type: DataTypes.ARRAY(DataTypes.STRING),
+                allowNull: true,
+            },
+            staffNotes: {
+                type: DataTypes.TEXT,
+                allowNull: true,
+            },
+            participantsList: {
+                type: DataTypes.ARRAY(DataTypes.STRING),
+                allowNull: true,
+            },
         },
         {
             sequelize,

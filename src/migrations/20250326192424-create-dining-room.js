@@ -1,31 +1,18 @@
 "use strict";
+
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
     async up(queryInterface, Sequelize) {
-        await queryInterface.createTable("ConferenceRooms", {
-            id: {
-                allowNull: false,
-                autoIncrement: true,
-                primaryKey: true,
-                type: Sequelize.INTEGER,
-            },
+        await queryInterface.createTable("DiningRooms", {
             roomId: {
                 type: Sequelize.INTEGER,
+                primaryKey: true,
                 allowNull: false,
                 references: {
                     model: "Rooms",
-                    key: "id",
+                    key: "roomId",
                 },
                 onDelete: "CASCADE",
-            },
-            seatingPlan: {
-                type: Sequelize.STRING,
-            },
-            numChairs: {
-                type: Sequelize.INTEGER,
-            },
-            numTables: {
-                type: Sequelize.INTEGER,
             },
             createdAt: {
                 allowNull: false,
@@ -38,6 +25,6 @@ module.exports = {
         });
     },
     async down(queryInterface, Sequelize) {
-        await queryInterface.dropTable("ConferenceRooms");
+        await queryInterface.dropTable("DiningRooms");
     },
 };

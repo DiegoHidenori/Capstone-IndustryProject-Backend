@@ -1,17 +1,8 @@
 "use strict";
 
-/** @type {import('sequelize-cli').Migration} */
+/* @type {import('sequelize-cli').Migration} */
 module.exports = {
     async up(queryInterface, Sequelize) {
-        /**
-         * Add seed commands here.
-         *
-         * Example:
-         * await queryInterface.bulkInsert('People', [{
-         *   name: 'John Doe',
-         *   isBetaMember: false
-         * }], {});
-         */
         const now = new Date();
 
         const rooms = [];
@@ -19,8 +10,8 @@ module.exports = {
         rooms.push({
             roomName: "Main Kitchen",
             roomType: "Kitchen",
-            pricePerNight: 0,
-            description: "Fully equipped kitchen",
+            roomPricePerNight: 0,
+            roomDescription: "Fully equipped kitchen",
             maxCapacity: 140,
             needsCleaning: false,
             createdAt: now,
@@ -30,8 +21,8 @@ module.exports = {
         rooms.push({
             roomName: "Dining Room",
             roomType: "Dining",
-            pricePerNight: 0,
-            description: "Large dining room",
+            roomPricePerNight: 0,
+            roomDescription: "Large dining room",
             maxCapacity: 140,
             needsCleaning: false,
             createdAt: now,
@@ -42,8 +33,8 @@ module.exports = {
             rooms.push({
                 roomName: `Conference Room ${i}`,
                 roomType: "Conference",
-                pricePerNight: 150,
-                description: `Conference room number ${i}`,
+                roomPricePerNight: 150,
+                roomDescription: `Conference room number ${i}`,
                 maxCapacity: 5,
                 needsCleaning: false,
                 createdAt: now,
@@ -54,8 +45,8 @@ module.exports = {
         rooms.push({
             roomName: "Chapel",
             roomType: "Chapel",
-            pricePerNight: 0,
-            description: "Quiet place for prayer and worship",
+            roomPricePerNight: 0,
+            roomDescription: "Quiet place for prayer and worship",
             maxCapacity: 120,
             needsCleaning: false,
             createdAt: now,
@@ -66,8 +57,8 @@ module.exports = {
             rooms.push({
                 roomName: `Bedroom ${i}`,
                 roomType: "Bedroom",
-                pricePerNight: 80,
-                description: `Room with bed #${i}`,
+                roomPricePerNight: 80,
+                roomDescription: `Room with bed #${i}`,
                 maxCapacity: 2,
                 needsCleaning: false,
                 createdAt: now,
@@ -75,82 +66,110 @@ module.exports = {
             });
         }
 
-        const insertedRooms = await queryInterface.bulkInsert("Rooms", rooms, {
-            returning: true,
-        });
+        await queryInterface.bulkInsert("Rooms", rooms, {});
 
-        const kitchenRoom = insertedRooms[0];
-        const diningRoom = insertedRooms[1];
-        const conferenceRooms = insertedRooms.slice(2, 7);
-        const chapelRoom = insertedRooms[7];
-        const bedroomRooms = insertedRooms.slice(8);
-
-        await queryInterface.bulkInsert("Kitchens", [
-            {
-                roomId: kitchenRoom.id,
-                createdAt: now,
-                updatedAt: now,
-            },
-        ]);
-
-        await queryInterface.bulkInsert("DiningRooms", [
-            {
-                roomId: diningRoom.id,
-                createdAt: now,
-                updatedAt: now,
-            },
-        ]);
-
-        await queryInterface.bulkInsert(
-            "ConferenceRooms",
-            conferenceRooms.map((room, index) => ({
-                roomId: room.id,
-                seatingPlan: "Classroom",
-                numChairs: 40 + index * 5,
-                numTables: 10 + index,
-                createdAt: now,
-                updatedAt: now,
-            }))
+        const insertedRooms = await queryInterface.sequelize.query(
+            'SELECT * FROM "Rooms";', // Fetch inserted rows
+            { type: Sequelize.QueryTypes.SELECT }
         );
 
-        await queryInterface.bulkInsert("Chapels", [
-            {
-                roomId: chapelRoom.id,
-                createdAt: now,
-                updatedAt: now,
-            },
-        ]);
+        const kitchenRoom = insertedRooms.find((r) => r.roomType === "Kitchen");
+        const diningRoom = insertedRooms.find((r) => r.roomType === "Dining");
+        const chapelRoom = insertedRooms.find((r) => r.roomType === "Chapel");
+        const conferenceRooms = insertedRooms.filter(
+            (r) => r.roomType === "Conference"
+        );
+        const bedroomRooms = insertedRooms.filter(
+            (r) => r.roomType === "Bedroom"
+        );
 
-        await queryInterface.bulkInsert(
-            "Bedrooms",
-            bedroomRooms.map((room) => {
-                const roomNumber = parseInt(room.roomName.split(" ")[1]);
-                return {
-                    roomId: room.id,
-                    bedroomNumber: roomNumber,
-                    hasShower: roomNumber >= 30,
+        if (kitchenRoom) {
+            await queryInterface.bulkInsert("Kitchens", [
+                {
+                    roomId: kitchenRoom.roomId,
                     createdAt: now,
                     updatedAt: now,
-                };
-            })
-        );
+                },
+            ]);
+        }
+
+        if (diningRoom) {
+            await queryInterface.bulkInsert("DiningRooms", [
+                {
+                    roomId: diningRoom.roomId,
+                    createdAt: now,
+                    updatedAt: now,
+                },
+            ]);
+        }
+
+        if (conferenceRooms.length > 0) {
+            await queryInterface.bulkInsert(
+                "ConferenceRooms",
+                conferenceRooms.map((room, index) => ({
+                    roomId: room.roomId,
+                    seatingPlan: "Classroom",
+                    numChairs: 40 + index * 5,
+                    numTables: 10 + index,
+                    createdAt: now,
+                    updatedAt: now,
+                }))
+            );
+        }
+
+        if (chapelRoom) {
+            await queryInterface.bulkInsert("Chapels", [
+                {
+                    roomId: chapelRoom.roomId,
+                    createdAt: now,
+                    updatedAt: now,
+                },
+            ]);
+        }
+
+        if (bedroomRooms.length > 0) {
+            await queryInterface.bulkInsert(
+                "Bedrooms",
+                bedroomRooms.map((room) => {
+                    const roomNumber = parseInt(room.roomName.split(" ")[1]);
+                    return {
+                        roomId: room.roomId,
+                        bedroomNumber: roomNumber,
+                        hasShower: roomNumber >= 30,
+                        createdAt: now,
+                        updatedAt: now,
+                    };
+                })
+            );
+        }
     },
 
     async down(queryInterface, Sequelize) {
-        /**
-         * Add commands to revert seed here.
-         *
-         * Example:
-         * await queryInterface.bulkDelete('People', null, {});
-         */
-
         await Promise.all([
-            queryInterface.bulkDelete("Kitchens", null, {}),
-            queryInterface.bulkDelete("DiningRooms", null, {}),
-            queryInterface.bulkDelete("ConferenceRooms", null, {}),
-            queryInterface.bulkDelete("Chapels", null, {}),
-            queryInterface.bulkDelete("Bedrooms", null, {}),
-            queryInterface.bulkDelete("Rooms", null, {}),
+            queryInterface.bulkDelete("Kitchens", null, {
+                truncate: true,
+                cascade: true,
+            }),
+            queryInterface.bulkDelete("DiningRooms", null, {
+                truncate: true,
+                cascade: true,
+            }),
+            queryInterface.bulkDelete("ConferenceRooms", null, {
+                truncate: true,
+                cascade: true,
+            }),
+            queryInterface.bulkDelete("Chapels", null, {
+                truncate: true,
+                cascade: true,
+            }),
+            queryInterface.bulkDelete("Bedrooms", null, {
+                truncate: true,
+                cascade: true,
+            }),
+            queryInterface.bulkDelete("Rooms", null, {
+                truncate: true,
+                cascade: true,
+            }),
         ]);
     },
 };

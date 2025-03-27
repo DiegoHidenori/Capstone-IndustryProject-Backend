@@ -1,9 +1,10 @@
 "use strict";
 
+/** @type {import('sequelize-cli').Migration} */
 module.exports = {
     async up(queryInterface, Sequelize) {
         await queryInterface.createTable("Invoices", {
-            id: {
+            invoiceId: {
                 allowNull: false,
                 autoIncrement: true,
                 primaryKey: true,
@@ -14,7 +15,17 @@ module.exports = {
                 allowNull: false,
                 references: {
                     model: "Bookings",
-                    key: "id",
+                    key: "bookingId",
+                },
+                onUpdate: "CASCADE",
+                onDelete: "CASCADE",
+            },
+            userId: {
+                type: Sequelize.INTEGER,
+                allowNull: false,
+                references: {
+                    model: "Users",
+                    key: "userId",
                 },
                 onUpdate: "CASCADE",
                 onDelete: "CASCADE",
@@ -23,7 +34,7 @@ module.exports = {
                 type: Sequelize.DECIMAL,
                 allowNull: false,
             },
-            depositRequired: {
+            depositAmount: {
                 type: Sequelize.DECIMAL,
                 allowNull: false,
             },

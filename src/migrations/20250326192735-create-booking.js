@@ -1,4 +1,5 @@
 "use strict";
+
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
     async up(queryInterface, Sequelize) {
@@ -11,7 +12,7 @@ module.exports = {
         `);
 
         await queryInterface.createTable("Bookings", {
-            id: {
+            bookingId: {
                 allowNull: false,
                 autoIncrement: true,
                 primaryKey: true,
@@ -19,36 +20,21 @@ module.exports = {
             },
             bookingDate: {
                 type: Sequelize.DATE,
-            },
-            depositAmount: {
-                type: Sequelize.DECIMAL,
                 allowNull: false,
-            },
-            depositPaid: {
-                type: Sequelize.BOOLEAN,
-                defaultValue: false,
-            },
-            depositPaymentId: {
-                type: Sequelize.STRING,
-            },
-            finalPaymentId: {
-                type: Sequelize.STRING,
-            },
-            bookingFullyPaid: {
-                type: Sequelize.BOOLEAN,
             },
             userId: {
                 type: Sequelize.INTEGER,
                 allowNull: false,
                 references: {
                     model: "Users",
-                    key: "id",
+                    key: "userId",
                 },
                 onUpdate: "CASCADE",
                 onDelete: "CASCADE",
             },
             hasOvernight: {
                 type: Sequelize.BOOLEAN,
+                allowNull: false,
             },
             firstMeal: {
                 type: Sequelize.ENUM("breakfast", "lunch", "dinner"),
@@ -56,24 +42,23 @@ module.exports = {
             },
             checkinDate: {
                 type: Sequelize.DATE,
+                allowNull: false,
             },
             checkoutDate: {
                 type: Sequelize.DATE,
+                allowNull: false,
             },
             bookingPrice: {
                 type: Sequelize.DECIMAL,
+                allowNull: true,
             },
             requirements: {
                 type: Sequelize.ARRAY(Sequelize.STRING), // or JSONB if preferred
                 allowNull: true,
             },
-            paymentStatus: {
-                type: Sequelize.ENUM("pending", "deposit_paid", "fully_paid"),
-                allowNull: false,
-                defaultValue: "pending",
-            },
             staffNotes: {
                 type: Sequelize.TEXT,
+                allowNull: true,
             },
             participantsList: {
                 type: Sequelize.ARRAY(Sequelize.STRING),

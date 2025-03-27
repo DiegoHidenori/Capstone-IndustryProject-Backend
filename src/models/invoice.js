@@ -4,27 +4,52 @@ const { Model } = require("sequelize");
 module.exports = (sequelize, DataTypes) => {
     class Invoice extends Model {
         static associate(models) {
-            Invoice.belongsTo(models.Booking, { foreignKey: "bookingId" });
+            Invoice.belongsTo(models.Booking, {
+                foreignKey: "bookingId",
+                onDelete: "CASCADE",
+            });
+            Invoice.belongsTo(models.User, {
+                foreignKey: "userId",
+                onDelete: "CASCADE",
+            });
+            Invoice.hasMany(models.Payment, {
+                foreignKey: "invoiceId",
+                onDelete: "CASCADE",
+            });
         }
     }
 
     Invoice.init(
         {
+            invoiceId: {
+                allowNull: false,
+                autoIncrement: true,
+                primaryKey: true,
+                type: DataTypes.INTEGER,
+            },
             bookingId: {
                 type: DataTypes.INTEGER,
                 allowNull: false,
                 references: {
                     model: "Bookings",
-                    key: "id",
+                    key: "bookingId",
                 },
                 onUpdate: "CASCADE",
                 onDelete: "CASCADE",
+            },
+            userId: {
+                type: DataTypes.INTEGER,
+                allowNull: false,
+                references: {
+                    model: "Users",
+                    key: "userId",
+                },
             },
             totalAmount: {
                 type: DataTypes.DECIMAL,
                 allowNull: false,
             },
-            depositRequired: {
+            depositAmount: {
                 type: DataTypes.DECIMAL,
                 allowNull: false,
             },
