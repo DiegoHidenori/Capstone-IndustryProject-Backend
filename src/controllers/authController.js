@@ -1,5 +1,5 @@
 const jwt = require("jsonwebtoken");
-const { User } = require("../models");
+const { User, Token } = require("../models");
 
 const ACCESS_SECRET = process.env.JWT_SECRET;
 const REFRESH_SECRET = process.env.REFRESH_SECRET_KEY;
@@ -73,6 +73,13 @@ module.exports = {
 			const accessToken = generateAccessToken(user);
 			const refreshToken = generateRefreshToken(user);
 
+			// 🧠 Store refresh token in DB
+			await Token.create({
+				userId: user.userId,
+				token: refreshToken,
+				expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+			});
+
 			res.json({
 				message: "Login successful",
 				accessToken,
@@ -92,6 +99,17 @@ module.exports = {
 				return res
 					.status(401)
 					.json({ message: "Access denied — no token provided" });
+			}
+
+			// 🔎 Check if token exists in DB
+			const tokenRecord = await Token.findOne({
+				where: { token: refreshTokenFromClient },
+			});
+
+			if (!tokenRecord) {
+				return res
+					.status(403)
+					.json({ message: "Invalid refresh token" });
 			}
 
 			jwt.verify(
@@ -118,6 +136,18 @@ module.exports = {
 				message: "Error refreshing token",
 				error: err,
 			});
+		}
+	},
+
+	logout: async (req, res) => {
+		try {
+			const { token } = req.body;
+
+			await Token.destroy({ where: { token } });
+
+			res.json({ message: "Logged out successfully" });
+		} catch (err) {
+			res.status(500).json({ message: "Error logging out", error: err });
 		}
 	},
 };

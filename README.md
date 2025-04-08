@@ -4,6 +4,10 @@
 
 npx sequelize-cli model:generate --name User --attributes firstName:string,middleName:string,lastName:string,email:string,phone:string,password:string,billingAddress:string,role:string --config src/config/config.js --migrations-path src/migrations --models-path src/models
 
+## Token Model
+
+npx sequelize-cli model:generate --name Token --attributes userId:integer,token:text,expiresAt:date --config src/config/config.js --migrations-path src/migrations --models-path src/models
+
 ## Booking Model
 
 npx sequelize-cli model:generate --name Booking --attributes bookingDate:date,depositPaid:boolean,depositAmount:decimal,depositPaymentId:string,bookingFullyPaid:boolean,fullPaymentInvoiceId:string,userId:integer,hasOvernight:boolean,firstMeal:string,checkinDate:date,checkoutDate:date,bookingPrice:decimal,requirements:json,paymentStatus:string,staffNotes:text,participantsList:json --config src/config/config.js --migrations-path src/migrations --models-path src/models
