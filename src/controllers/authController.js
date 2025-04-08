@@ -150,4 +150,26 @@ module.exports = {
 			res.status(500).json({ message: "Error logging out", error: err });
 		}
 	},
+
+	getCurrentUser: async (req, res) => {
+		try {
+			const { userId } = req.user; // Comes from JWT middleware
+
+			const user = await User.findByPk(userId, {
+				attributes: { exclude: ["password"] }, // Don’t return password
+			});
+
+			if (!user) {
+				return res.status(404).json({ message: "User not found" });
+			}
+
+			res.json(user);
+		} catch (err) {
+			console.error("Error fetching current user:", err);
+			res.status(500).json({
+				message: "Failed to fetch user",
+				error: err,
+			});
+		}
+	},
 };

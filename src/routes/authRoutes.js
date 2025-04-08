@@ -13,9 +13,7 @@ router.post("/login", authController.login);
 router.post("/refresh", authController.refreshToken);
 router.post("/logout", authController.logout);
 
-router.get("/profile", authenticateUser, (req, res) => {
-	res.json({ message: "Welcome to your profile", user: req.user });
-});
+router.get("/me", authenticateUser, authController.getCurrentUser);
 
 router.get(
 	"/admin",
