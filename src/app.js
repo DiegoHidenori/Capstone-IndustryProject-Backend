@@ -14,7 +14,12 @@ const invoiceRoutes = require("./routes/invoiceRoutes");
 const app = express();
 
 // Middleware
-app.use(cors());
+app.use(
+	cors({
+		origin: "http://localhost:3000", // ✅ explicitly allow frontend
+		credentials: true,
+	})
+);
 app.use(express.json());
 app.use("/rooms", roomRoutes);
 app.use("/auth", authRoutes);
@@ -27,13 +32,13 @@ app.use("/invoices", invoiceRoutes);
 
 // Test Route
 app.get("/", (req, res) => {
-    res.send("API is running...");
+	res.send("API is running...");
 });
 
 // Global Error Handler
 app.use((err, req, res, next) => {
-    console.error(err);
-    res.status(500).json({ message: "Something went wrong" });
+	console.error(err);
+	res.status(500).json({ message: "Something went wrong" });
 });
 
 module.exports = app;

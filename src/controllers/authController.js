@@ -1,11 +1,13 @@
 const jwt = require("jsonwebtoken");
 const { User, Token } = require("../models");
+const { Op } = require("sequelize");
 
 const ACCESS_SECRET = process.env.JWT_SECRET;
 const REFRESH_SECRET = process.env.REFRESH_SECRET_KEY;
 const ACCESS_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "15m";
 const REFRESH_EXPIRES_IN = process.env.REFRESH_EXPIRES_IN || "7d";
 
+// 🔐 Utility: Generate Tokens
 function generateAccessToken(user) {
 	return jwt.sign({ userId: user.userId, role: user.role }, ACCESS_SECRET, {
 		expiresIn: ACCESS_EXPIRES_IN,
@@ -15,6 +17,16 @@ function generateAccessToken(user) {
 function generateRefreshToken(user) {
 	return jwt.sign({ userId: user.userId }, REFRESH_SECRET, {
 		expiresIn: REFRESH_EXPIRES_IN,
+	});
+}
+
+// 🔐 Utility: Verify a token async/await style
+function verifyToken(token, secret) {
+	return new Promise((resolve, reject) => {
+		jwt.verify(token, secret, (err, decoded) => {
+			if (err) reject(err);
+			else resolve(decoded);
+		});
 	});
 }
 
@@ -31,7 +43,6 @@ module.exports = {
 					.json({ message: "Email already exists" });
 			}
 
-			// 🔹 Create user (password is auto-hashed by Sequelize hooks)
 			const newUser = await User.create({
 				firstName,
 				lastName,
@@ -57,12 +68,11 @@ module.exports = {
 		}
 	},
 
-	// 🔹 User Login & JWT Token Generation
+	// 🔐 Login
 	login: async (req, res) => {
 		try {
 			const { email, password } = req.body;
 
-			// 🔹 Find user by email
 			const user = await User.findOne({ where: { email } });
 			if (!user || !(await user.validPassword(password))) {
 				return res
@@ -73,11 +83,10 @@ module.exports = {
 			const accessToken = generateAccessToken(user);
 			const refreshToken = generateRefreshToken(user);
 
-			// 🧠 Store refresh token in DB
 			await Token.create({
 				userId: user.userId,
 				token: refreshToken,
-				expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+				expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
 			});
 
 			res.json({
@@ -86,24 +95,24 @@ module.exports = {
 				refreshToken,
 			});
 		} catch (err) {
+			console.error("Login error:", err);
 			res.status(500).json({ message: "Error logging in", error: err });
 		}
 	},
 
-	// 🔄 Refresh JWT Token
+	// 🔄 Refresh Access Token
 	refreshToken: async (req, res) => {
 		try {
-			const { token: refreshTokenFromClient } = req.body;
+			const { refreshToken } = req.body;
 
-			if (!refreshTokenFromClient) {
+			if (!refreshToken) {
 				return res
 					.status(401)
-					.json({ message: "Access denied — no token provided" });
+					.json({ message: "No refresh token provided" });
 			}
 
-			// 🔎 Check if token exists in DB
 			const tokenRecord = await Token.findOne({
-				where: { token: refreshTokenFromClient },
+				where: { token: refreshToken },
 			});
 
 			if (!tokenRecord) {
@@ -112,51 +121,50 @@ module.exports = {
 					.json({ message: "Invalid refresh token" });
 			}
 
-			jwt.verify(
-				refreshTokenFromClient,
-				REFRESH_SECRET,
-				(err, decoded) => {
-					if (err)
-						return res
-							.status(403)
-							.json({ message: "Invalid refresh token" });
+			const decoded = await verifyToken(refreshToken, REFRESH_SECRET);
 
-					// 🔹 Generate new Access Token
-					const newAccessToken = jwt.sign(
-						{ userId: decoded.userId },
-						ACCESS_SECRET,
-						{ expiresIn: ACCESS_EXPIRES_IN }
-					);
+			const user = await User.findByPk(decoded.userId);
+			if (!user) {
+				return res.status(404).json({ message: "User not found" });
+			}
 
-					res.json({ accessToken: newAccessToken });
-				}
-			);
+			const newAccessToken = generateAccessToken(user);
+			res.json({ accessToken: newAccessToken });
 		} catch (err) {
-			res.status(500).json({
-				message: "Error refreshing token",
-				error: err,
+			console.error("Refresh token error:", err);
+			res.status(403).json({
+				message: "Invalid or expired refresh token",
 			});
 		}
 	},
 
+	// 🔒 Logout
 	logout: async (req, res) => {
 		try {
-			const { token } = req.body;
+			const { refreshToken } = req.body;
 
-			await Token.destroy({ where: { token } });
+			if (!refreshToken) {
+				return res
+					.status(400)
+					.json({ message: "Refresh token required" });
+			}
+
+			await Token.destroy({ where: { token: refreshToken } });
 
 			res.json({ message: "Logged out successfully" });
 		} catch (err) {
+			console.error("Logout error:", err);
 			res.status(500).json({ message: "Error logging out", error: err });
 		}
 	},
 
+	// 👤 Get Logged-In User (via JWT)
 	getCurrentUser: async (req, res) => {
 		try {
-			const { userId } = req.user; // Comes from JWT middleware
+			const { userId } = req.user;
 
 			const user = await User.findByPk(userId, {
-				attributes: { exclude: ["password"] }, // Don’t return password
+				attributes: { exclude: ["password"] },
 			});
 
 			if (!user) {
@@ -165,10 +173,32 @@ module.exports = {
 
 			res.json(user);
 		} catch (err) {
-			console.error("Error fetching current user:", err);
+			console.error("Get user error:", err);
 			res.status(500).json({
 				message: "Failed to fetch user",
 				error: err,
+			});
+		}
+	},
+
+	cleanupExpiredTokens: async (req, res) => {
+		try {
+			const result = await Token.destroy({
+				where: {
+					expiresAt: {
+						[Op.lt]: new Date(), // Delete where expiry is in the past
+					},
+				},
+			});
+
+			res.json({
+				message: `Cleaned up ${result} expired token(s).`,
+			});
+		} catch (err) {
+			console.error("Error cleaning up tokens:", err);
+			res.status(500).json({
+				message: "Failed to clean up tokens.",
+				error: err.message,
 			});
 		}
 	},

@@ -1,7 +1,5 @@
 const express = require("express");
 const router = express.Router();
-const jwt = require("jsonwebtoken");
-const { User } = require("../models");
 const authController = require("../controllers/authController");
 const {
 	authenticateUser,
@@ -22,6 +20,13 @@ router.get(
 	(req, res) => {
 		res.json({ message: "Welcome, Admin" });
 	}
+);
+
+router.delete(
+	"/cleanup-tokens",
+	authenticateUser,
+	authorizeRoles("admin"), // Only admins can clean tokens
+	authController.cleanupExpiredTokens
 );
 
 module.exports = router;
