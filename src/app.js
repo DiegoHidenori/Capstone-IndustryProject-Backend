@@ -21,7 +21,7 @@ app.use(
 	})
 );
 app.use(express.json());
-app.use("/rooms", roomRoutes);
+app.use("/api/rooms", roomRoutes);
 app.use("/auth", authRoutes);
 app.use("/users", userRoutes);
 app.use("/api/bookings", bookingRoutes);

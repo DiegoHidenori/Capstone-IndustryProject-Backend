@@ -1,6 +1,9 @@
 const { Booking, Room, User, Meal, Discount, Invoice } = require("../models");
 const { Op } = require("sequelize");
+const sanitizePayload = require("../utils/sanitizePayload");
+const validateBookingPayload = require("../utils/validateBookingPayload");
 
+// Utility: Create invoice
 async function createInvoice(bookingId, userId, totalAmount) {
 	const depositAmount = totalAmount * 0.2;
 	return await Invoice.create({
@@ -12,6 +15,7 @@ async function createInvoice(bookingId, userId, totalAmount) {
 	});
 }
 
+// Utility: Calculate final price
 async function calculateTotalPrice(bookingPrice, mealIds, discountIds) {
 	let totalMealCost = 0;
 	let totalDiscountAmount = 0;
@@ -40,7 +44,7 @@ async function calculateTotalPrice(bookingPrice, mealIds, discountIds) {
 		}
 	}
 
-	let finalPrice =
+	const finalPrice =
 		parseFloat(bookingPrice) + totalMealCost - totalDiscountAmount;
 	return Math.max(finalPrice, 0);
 }
@@ -48,9 +52,29 @@ async function calculateTotalPrice(bookingPrice, mealIds, discountIds) {
 module.exports = {
 	createBooking: async (req, res) => {
 		try {
+			const allowedFields = [
+				"userId",
+				"hasOvernight",
+				"firstMeal",
+				"checkinDate",
+				"checkoutDate",
+				"bookingPrice",
+				"requirements",
+				"staffNotes",
+				"participantsList",
+				"roomIds",
+				"mealIds",
+				"discountIds",
+			];
+
+			const payload = sanitizePayload(req.body, allowedFields);
+			const errors = validateBookingPayload(payload);
+			if (errors.length > 0) {
+				return res.status(400).json({ errors });
+			}
+
 			const {
 				userId,
-				bookingDate,
 				hasOvernight,
 				firstMeal,
 				checkinDate,
@@ -62,27 +86,16 @@ module.exports = {
 				roomIds,
 				mealIds,
 				discountIds,
-			} = req.body;
-
-			if (requirements && !Array.isArray(requirements)) {
-				return res.status(400).json({
-					message: "Requirements must be an array of strings.",
-				});
-			}
-			if (participantsList && !Array.isArray(participantsList)) {
-				return res.status(400).json({
-					message: "Participants list must be an array of strings.",
-				});
-			}
+			} = payload;
 
 			const user = await User.findByPk(userId);
-			if (!user) {
+			if (!user)
 				return res.status(400).json({ message: "User does not exist" });
-			}
 
-			let rooms = [];
 			if (roomIds?.length) {
-				rooms = await Room.findAll({ where: { roomId: roomIds } });
+				const rooms = await Room.findAll({
+					where: { roomId: roomIds },
+				});
 				if (rooms.length !== roomIds.length) {
 					return res.status(400).json({
 						message: "One or more room IDs are invalid",
@@ -90,14 +103,8 @@ module.exports = {
 					});
 				}
 
-				// ✅ Room availability check
-				const conflictingBookings = await Booking.findAll({
-					include: [
-						{
-							model: Room,
-							where: { roomId: roomIds },
-						},
-					],
+				const conflicts = await Booking.findAll({
+					include: [{ model: Room, where: { roomId: roomIds } }],
 					where: {
 						[Op.or]: [
 							{
@@ -111,30 +118,25 @@ module.exports = {
 								},
 							},
 							{
-								checkinDate: {
-									[Op.lte]: checkinDate,
-								},
-								checkoutDate: {
-									[Op.gte]: checkoutDate,
-								},
+								checkinDate: { [Op.lte]: checkinDate },
+								checkoutDate: { [Op.gte]: checkoutDate },
 							},
 						],
 					},
 				});
 
-				if (conflictingBookings.length > 0) {
+				if (conflicts.length > 0) {
 					const conflictRoomIds = [
 						...new Set(
-							conflictingBookings.flatMap((b) =>
+							conflicts.flatMap((b) =>
 								b.Rooms.map((room) => room.roomId)
 							)
 						),
 					];
-
 					return res.status(409).json({
 						message:
 							"One or more selected rooms are already booked for the selected dates.",
-						conflictingRoomIds: conflictRoomIds,
+						conflictingRoomIds,
 					});
 				}
 			}
@@ -170,7 +172,7 @@ module.exports = {
 
 			res.status(201).json(fullBooking);
 		} catch (err) {
-			console.error(err);
+			console.error(`[BookingController] CREATE error:`, err);
 			res.status(500).json({
 				message: "Error creating booking",
 				error: err,
@@ -178,7 +180,6 @@ module.exports = {
 		}
 	},
 
-	// Get all bookings
 	getAllBookings: async (req, res) => {
 		try {
 			const bookings = await Booking.findAll({
@@ -186,6 +187,7 @@ module.exports = {
 			});
 			res.json(bookings);
 		} catch (err) {
+			console.error(`[BookingController] GET ALL error:`, err);
 			res.status(500).json({
 				message: "Error fetching bookings",
 				error: err,
@@ -193,85 +195,65 @@ module.exports = {
 		}
 	},
 
-	// Get a single booking
 	getBookingById: async (req, res) => {
 		try {
-			console.log("Fetching booking with ID:", req.params.bookingId);
 			const booking = await Booking.findByPk(req.params.bookingId, {
 				include: [Room, User, Meal, Discount, Invoice],
 			});
 
 			if (!booking) {
-				console.log("Booking not found for ID:", req.params.bookingId);
 				return res.status(404).json({ message: "Booking not found" });
 			}
-
-			console.log("Fetched Booking:", JSON.stringify(booking, null, 2));
-
-			// let originalPrice = parseFloat(booking.bookingPrice);
-			// let mealTotal = booking.Meals.reduce(
-			//     (sum, meal) => sum + parseFloat(meal.price),
-			//     0
-			// );
 
 			let discountBreakdown = [];
 			let totalDiscountAmount = 0;
 
-			console.log("Starting for loop...");
 			for (const discount of booking.Discounts) {
 				let discountAmount = 0;
 				if (discount.discountType === "percentage") {
+					const subtotal =
+						parseFloat(booking.bookingPrice) +
+						booking.Meals.reduce(
+							(sum, meal) => sum + parseFloat(meal.price),
+							0
+						);
+
 					discountAmount =
-						(parseFloat(booking.bookingPrice) +
-							booking.Meals.reduce(
-								(sum, meal) => sum + parseFloat(meal.price),
-								0
-							)) *
-						(parseFloat(discount.discountValue) / 100);
+						subtotal * (parseFloat(discount.discountValue) / 100);
 				} else if (discount.discountType === "fixed") {
 					discountAmount = parseFloat(discount.discountValue);
 				}
-
 				totalDiscountAmount += discountAmount;
 
-				console.log("Pushing to discountBreakdown...");
 				discountBreakdown.push({
 					discountName: discount.name,
 					type: discount.discountType,
 					value: discount.discountValue,
 					discountAmount: discountAmount.toFixed(2),
 				});
-
-				console.log("-----------------------ASDKFASODFJAOSIDJF");
 			}
 
-			// let finalPrice = originalPrice + mealTotal - totalDiscountAmount;
-			// if (finalPrice < 0) finalPrice = 0;
-
-			// if (booking.bookingPrice.toFixed(2)) {
-			//     console.log("TRUE");
-			// } else {
-			//     console.log("NOT TRUE");
-			// }
-			console.log("aosidjfoisajd", booking);
-
-			const response = {
+			res.json({
 				id: booking.bookingId,
 				bookingDate: booking.bookingDate,
+				checkinDate: booking.checkinDate,
+				checkoutDate: booking.checkoutDate,
+				firstMeal: booking.firstMeal,
+				hasOvernight: booking.hasOvernight,
+				staffNotes: booking.staffNotes,
+				requirements: booking.requirements,
+				participantsList: booking.participantsList,
 				finalPrice: parseFloat(booking.bookingPrice).toFixed(2),
 				discountBreakdown,
 				totalDiscountAmount: totalDiscountAmount.toFixed(2),
-				discountBreakdown,
 				Rooms: booking.Rooms,
 				Meals: booking.Meals,
 				Discounts: booking.Discounts,
 				Invoice: booking.Invoice,
 				User: booking.User,
-			};
-			console.log("filled response const var");
-
-			res.json(response);
+			});
 		} catch (err) {
+			console.error(`[BookingController] GET BY ID error:`, err);
 			res.status(500).json({
 				message: "Error fetching booking",
 				error: err,
@@ -281,8 +263,27 @@ module.exports = {
 
 	updateBooking: async (req, res) => {
 		try {
+			const allowedFields = [
+				"hasOvernight",
+				"firstMeal",
+				"checkinDate",
+				"checkoutDate",
+				"bookingPrice",
+				"requirements",
+				"staffNotes",
+				"participantsList",
+				"roomIds",
+				"mealIds",
+				"discountIds",
+			];
+
+			const payload = sanitizePayload(req.body, allowedFields);
+			const errors = validateBookingPayload(payload);
+			if (errors.length > 0) {
+				return res.status(400).json({ errors });
+			}
+
 			const {
-				bookingDate,
 				hasOvernight,
 				firstMeal,
 				checkinDate,
@@ -294,7 +295,7 @@ module.exports = {
 				roomIds,
 				mealIds,
 				discountIds,
-			} = req.body;
+			} = payload;
 
 			const booking = await Booking.findByPk(req.params.bookingId, {
 				include: [Invoice],
@@ -302,80 +303,65 @@ module.exports = {
 			if (!booking)
 				return res.status(404).json({ message: "Booking not found" });
 
-			let finalPrice = await calculateTotalPrice(
+			if (roomIds?.length) {
+				const rooms = await Room.findAll({
+					where: { roomId: roomIds },
+				});
+				if (rooms.length !== roomIds.length) {
+					return res.status(400).json({
+						message: "One or more room IDs are invalid",
+						validRoomIds: rooms.map((r) => r.roomId),
+					});
+				}
+
+				const conflicts = await Booking.findAll({
+					include: [{ model: Room, where: { roomId: roomIds } }],
+					where: {
+						bookingId: { [Op.ne]: booking.bookingId },
+						[Op.or]: [
+							{
+								checkinDate: {
+									[Op.between]: [checkinDate, checkoutDate],
+								},
+							},
+							{
+								checkoutDate: {
+									[Op.between]: [checkinDate, checkoutDate],
+								},
+							},
+							{
+								checkinDate: { [Op.lte]: checkinDate },
+								checkoutDate: { [Op.gte]: checkoutDate },
+							},
+						],
+					},
+				});
+
+				if (conflicts.length > 0) {
+					const conflictRoomIds = [
+						...new Set(
+							conflicts.flatMap((b) =>
+								b.Rooms.map((room) => room.roomId)
+							)
+						),
+					];
+					return res.status(409).json({
+						message:
+							"One or more selected rooms are already booked for the selected dates.",
+						conflictingRoomIds,
+					});
+				}
+			}
+
+			const finalPrice = await calculateTotalPrice(
 				bookingPrice,
 				mealIds,
 				discountIds
 			);
 
-			// if (roomIds) {
-			//     const rooms = await Room.findAll({
-			//         where: { roomId: roomIds },
-			//     });
-			//     if (rooms.length !== roomIds.length) {
-			//         return res.status(400).json({
-			//             message: "One or more room IDs are invalid",
-			//             validRoomIds: rooms.map((r) => r.roomId),
-			//         });
-			//     }
-			//     await booking.setRooms(roomIds);
-			// }
-
-			// if (mealIds) {
-			//     const meals = await Meal.findAll({
-			//         where: { mealId: mealIds },
-			//     });
-			//     if (meals.length !== mealIds.length) {
-			//         return res.status(400).json({
-			//             message: "One or more meal IDs are invalid",
-			//             validMealIds: meals.map((m) => m.mealId),
-			//         });
-			//     }
-			//     mealTotal = meals.reduce(
-			//         (sum, meal) => sum + parseFloat(meal.price),
-			//         0
-			//     );
-			//     await booking.setMeals(mealIds);
-			// }
-
-			// let totalDiscountAmount = 0;
-			// if (discountIds) {
-			//     const discounts = await Discount.findAll({
-			//         where: { discountId: discountIds },
-			//     });
-			//     if (discounts.length !== discountIds.length) {
-			//         return res.status(400).json({
-			//             message: "One or more discount IDs are invalid",
-			//             validDiscountIds: discounts.map((d) => d.discountId),
-			//         });
-			//     }
-			//     for (const discount of discounts) {
-			//         if (discount.discountType === "percentage") {
-			//             totalDiscountAmount +=
-			//                 (finalPrice + mealTotal) *
-			//                 (parseFloat(discount.discountValue) / 100);
-			//         } else if (discount.discountType === "fixed") {
-			//             totalDiscountAmount += parseFloat(
-			//                 discount.discountValue
-			//             );
-			//         }
-			//     }
-			//     await booking.setDiscounts(discountIds);
-			// }
-
-			// finalPrice = finalPrice + mealTotal - totalDiscountAmount;
-			// finalPrice = Math.max(finalPrice, 0);
-
 			await booking.update({
-				bookingDate,
-				hasOvernight,
-				firstMeal,
-				checkinDate,
-				checkoutDate,
+				...payload,
 				bookingPrice: finalPrice,
-				requirements,
-				staffNotes,
-				participantsList,
 			});
 
 			if (roomIds?.length) await booking.setRooms(roomIds);
@@ -385,7 +371,7 @@ module.exports = {
 			if (booking.Invoice) {
 				await booking.Invoice.update({
 					totalAmount: finalPrice,
-					depositAmount: finalPrice * 0.2, // Recalculate deposit
+					depositAmount: finalPrice * 0.2,
 				});
 			}
 
@@ -395,6 +381,7 @@ module.exports = {
 
 			res.json(updatedBooking);
 		} catch (err) {
+			console.error(`[BookingController] UPDATE error:`, err);
 			res.status(500).json({
 				message: "Error updating booking",
 				error: err,
@@ -402,7 +389,6 @@ module.exports = {
 		}
 	},
 
-	// Delete a booking
 	deleteBooking: async (req, res) => {
 		try {
 			const booking = await Booking.findByPk(req.params.bookingId);
@@ -412,6 +398,7 @@ module.exports = {
 			await booking.destroy();
 			res.json({ message: "Booking deleted" });
 		} catch (err) {
+			console.error(`[BookingController] DELETE error:`, err);
 			res.status(500).json({
 				message: "Error deleting booking",
 				error: err,
