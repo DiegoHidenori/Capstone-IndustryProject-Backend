@@ -7,7 +7,21 @@ const REFRESH_SECRET = process.env.REFRESH_SECRET_KEY;
 const ACCESS_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "15m";
 const REFRESH_EXPIRES_IN = process.env.REFRESH_EXPIRES_IN || "7d";
 
-// 🔐 Utility: Generate Tokens
+// 🔧 Normalize empty strings to null
+function normalizeOptionalFields(obj, fields) {
+	for (let field of fields) {
+		if (typeof obj[field] === "string" && obj[field].trim() === "") {
+			obj[field] = null;
+		}
+	}
+}
+
+// 🔧 Centralized error logging
+function logError(location, err) {
+	console.error(`[AuthController] ${location}:`, err.message || err);
+}
+
+// 🔐 Generate JWTs
 function generateAccessToken(user) {
 	return jwt.sign({ userId: user.userId, role: user.role }, ACCESS_SECRET, {
 		expiresIn: ACCESS_EXPIRES_IN,
@@ -20,7 +34,7 @@ function generateRefreshToken(user) {
 	});
 }
 
-// 🔐 Utility: Verify a token async/await style
+// 🔐 Async Token Verification
 function verifyToken(token, secret) {
 	return new Promise((resolve, reject) => {
 		jwt.verify(token, secret, (err, decoded) => {
@@ -31,11 +45,28 @@ function verifyToken(token, secret) {
 }
 
 module.exports = {
-	// 🔹 Register a New User
+	// 🔹 Register a new user
 	register: async (req, res) => {
 		try {
-			const { firstName, lastName, email, password, role } = req.body;
+			const {
+				firstName,
+				middleName,
+				lastName,
+				email,
+				phone,
+				password,
+				billingAddress,
+			} = req.body;
 
+			// Validate required fields
+			if (!firstName || !lastName || !email || !password) {
+				return res.status(400).json({
+					message:
+						"Missing required fields: firstName, lastName, email, or password.",
+				});
+			}
+
+			// Check if email already exists
 			const existingUser = await User.findOne({ where: { email } });
 			if (existingUser) {
 				return res
@@ -43,13 +74,24 @@ module.exports = {
 					.json({ message: "Email already exists" });
 			}
 
-			const newUser = await User.create({
+			const newUserData = {
 				firstName,
+				middleName,
 				lastName,
 				email,
+				phone,
 				password,
-				role: role || "guest",
-			});
+				billingAddress,
+				role: "guest",
+			};
+
+			normalizeOptionalFields(newUserData, [
+				"middleName",
+				"phone",
+				"billingAddress",
+			]);
+
+			const newUser = await User.create(newUserData);
 
 			res.status(201).json({
 				message: "User registered successfully",
@@ -60,7 +102,7 @@ module.exports = {
 				},
 			});
 		} catch (err) {
-			console.error("Register error:", err);
+			logError("Register", err);
 			res.status(500).json({
 				message: "Error registering user",
 				error: err,
@@ -86,7 +128,7 @@ module.exports = {
 			await Token.create({
 				userId: user.userId,
 				token: refreshToken,
-				expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+				expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
 			});
 
 			res.json({
@@ -95,12 +137,12 @@ module.exports = {
 				refreshToken,
 			});
 		} catch (err) {
-			console.error("Login error:", err);
+			logError("Login", err);
 			res.status(500).json({ message: "Error logging in", error: err });
 		}
 	},
 
-	// 🔄 Refresh Access Token
+	// 🔄 Refresh access token
 	refreshToken: async (req, res) => {
 		try {
 			const { refreshToken } = req.body;
@@ -116,9 +158,8 @@ module.exports = {
 			});
 
 			if (!tokenRecord) {
-				return res
-					.status(403)
-					.json({ message: "Invalid refresh token" });
+				return res.status(403);
+				json({ message: "Invalid refresh token" });
 			}
 
 			const decoded = await verifyToken(refreshToken, REFRESH_SECRET);
@@ -131,7 +172,7 @@ module.exports = {
 			const newAccessToken = generateAccessToken(user);
 			res.json({ accessToken: newAccessToken });
 		} catch (err) {
-			console.error("Refresh token error:", err);
+			logError("Refresh Token", err);
 			res.status(403).json({
 				message: "Invalid or expired refresh token",
 			});
@@ -153,7 +194,7 @@ module.exports = {
 
 			res.json({ message: "Logged out successfully" });
 		} catch (err) {
-			console.error("Logout error:", err);
+			logError("Logout", err);
 			res.status(500).json({ message: "Error logging out", error: err });
 		}
 	},
@@ -173,7 +214,7 @@ module.exports = {
 
 			res.json(user);
 		} catch (err) {
-			console.error("Get user error:", err);
+			logError("GetCurrentUser", err);
 			res.status(500).json({
 				message: "Failed to fetch user",
 				error: err,
@@ -181,12 +222,13 @@ module.exports = {
 		}
 	},
 
+	// 🧹 Clean up expired refresh tokens
 	cleanupExpiredTokens: async (req, res) => {
 		try {
 			const result = await Token.destroy({
 				where: {
 					expiresAt: {
-						[Op.lt]: new Date(), // Delete where expiry is in the past
+						[Op.lt]: new Date(),
 					},
 				},
 			});
@@ -195,7 +237,7 @@ module.exports = {
 				message: `Cleaned up ${result} expired token(s).`,
 			});
 		} catch (err) {
-			console.error("Error cleaning up tokens:", err);
+			logError("Cleanup Tokens", err);
 			res.status(500).json({
 				message: "Failed to clean up tokens.",
 				error: err.message,

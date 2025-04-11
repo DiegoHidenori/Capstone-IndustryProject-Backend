@@ -72,8 +72,13 @@ module.exports = {
 				"billingAddress",
 			];
 			for (let field of fields) {
-				if (req.body[field] !== undefined)
-					user[field] = req.body[field];
+				if (req.body[field] !== undefined) {
+					const value = req.body[field];
+					user[field] =
+						typeof value === "string" && value.trim() === ""
+							? null
+							: value;
+				}
 			}
 
 			// Optional: allow self-password update
