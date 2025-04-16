@@ -19,6 +19,7 @@ app.use(
 		origin: [
 			"http://localhost:3000",
 			"https://capstone-industry-project-frontend-8g3tzephz.vercel.app",
+			"https://capstone-industry-project-frontend.vercel.app",
 		], // ✅ explicitly allow frontend
 		credentials: true,
 	})
