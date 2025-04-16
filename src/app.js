@@ -13,14 +13,22 @@ const invoiceRoutes = require("./routes/invoiceRoutes");
 
 const app = express();
 
+const allowedOrigins = [
+	"http://localhost:3000",
+	"https://capstone-industry-project-frontend-8g3tzephz.vercel.app",
+	"https://capstone-industry-project-frontend.vercel.app",
+];
+
 // Middleware
 app.use(
 	cors({
-		origin: [
-			"http://localhost:3000",
-			"https://capstone-industry-project-frontend-8g3tzephz.vercel.app",
-			"https://capstone-industry-project-frontend.vercel.app",
-		], // ✅ explicitly allow frontend
+		origin: function (origin, callback) {
+			if (!origin || allowedOrigins.includes(origin)) {
+				callback(null, true);
+			} else {
+				callback(new Error("Not allowed by CORS"));
+			}
+		},
 		credentials: true,
 	})
 );

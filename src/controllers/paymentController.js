@@ -58,14 +58,17 @@ module.exports = {
 				);
 
 				// Call webhook to update system
-				await fetch("http://localhost:5000/api/payments/webhook", {
-					method: "POST",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({
-						transactionId, // ✅ Use transactionId instead of invoiceId
-						status: "successful",
-					}),
-				});
+				await fetch(
+					"https://capstone-industry-project-frontend.vercel.app/api/payments/webhook",
+					{
+						method: "POST",
+						headers: { "Content-Type": "application/json" },
+						body: JSON.stringify({
+							transactionId, // ✅ Use transactionId instead of invoiceId
+							status: "successful",
+						}),
+					}
+				);
 			}, 2000); // Simulated delay
 
 			res.json({
