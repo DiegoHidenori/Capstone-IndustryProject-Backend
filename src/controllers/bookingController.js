@@ -154,6 +154,12 @@ module.exports = {
 
 			const booking = await Booking.create({
 				...payload,
+				requirements: Array.isArray(payload.requirements)
+					? payload.requirements
+					: [],
+				participantsList: Array.isArray(payload.participantsList)
+					? payload.participantsList
+					: [],
 				bookingDate: new Date(),
 				bookingPrice: finalPrice,
 			});
@@ -344,6 +350,12 @@ module.exports = {
 
 			await booking.update({
 				...payload,
+				requirements: Array.isArray(payload.requirements)
+					? payload.requirements
+					: [],
+				participantsList: Array.isArray(payload.participantsList)
+					? payload.participantsList
+					: [],
 				bookingPrice: finalPrice,
 			});
 

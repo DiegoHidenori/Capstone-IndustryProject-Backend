@@ -121,6 +121,12 @@ module.exports = {
 			return res.status(400).json({ message: "Invalid role" });
 		}
 
+		if (req.user.role === "staff" && role === "admin") {
+			return res.status(403).json({
+				message: "Staff cannot promote users to admin role",
+			});
+		}
+
 		try {
 			const user = await User.findByPk(req.params.userId);
 			if (!user)

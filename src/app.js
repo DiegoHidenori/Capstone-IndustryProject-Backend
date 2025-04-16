@@ -22,13 +22,13 @@ app.use(
 );
 app.use(express.json());
 app.use("/api/rooms", roomRoutes);
-app.use("/auth", authRoutes);
+app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/bookings", bookingRoutes);
 app.use("/api/meals", mealRoutes);
 app.use("/api/discounts", discountRoutes);
-app.use("/payments", paymentRoutes);
-app.use("/invoices", invoiceRoutes);
+app.use("/api/payments", paymentRoutes);
+app.use("/api/invoices", invoiceRoutes);
 
 // Test Route
 app.get("/", (req, res) => {

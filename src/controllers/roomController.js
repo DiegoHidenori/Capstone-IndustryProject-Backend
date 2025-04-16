@@ -21,7 +21,7 @@ module.exports = {
 		} catch (error) {
 			console.error(
 				`[RoomController] ${req.method} ${req.originalUrl} Error:`,
-				err
+				error
 			);
 			res.status(500).json({ error: "Failed to fetch rooms" });
 		}
@@ -70,7 +70,7 @@ module.exports = {
 		} catch (error) {
 			console.error(
 				`[RoomController] ${req.method} ${req.originalUrl} Error:`,
-				err
+				error
 			);
 			res.status(500).json({ message: "Failed to fetch room" });
 		}
@@ -159,7 +159,7 @@ module.exports = {
 			await t.rollback();
 			console.error(
 				`[RoomController] ${req.method} ${req.originalUrl} Error:`,
-				err
+				error
 			);
 			res.status(500).json({ message: "Failed to create room" });
 		}
@@ -194,7 +194,7 @@ module.exports = {
 				{ transaction: t }
 			);
 
-			switch (roomType) {
+			switch (room.roomType) {
 				case "Bedroom":
 					await Bedroom.update(
 						sanitizeDetails(details, [
@@ -242,7 +242,7 @@ module.exports = {
 			await t.rollback();
 			console.error(
 				`[RoomController] ${req.method} ${req.originalUrl} Error:`,
-				err
+				error
 			);
 			res.status(500).json({ message: "Failed to update room" });
 		}
@@ -261,7 +261,7 @@ module.exports = {
 		} catch (error) {
 			console.error(
 				`[RoomController] ${req.method} ${req.originalUrl} Error:`,
-				err
+				error
 			);
 			res.status(500).json({ message: "Failed to delete room" });
 		}
