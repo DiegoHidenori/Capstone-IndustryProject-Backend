@@ -16,7 +16,10 @@ const app = express();
 // Middleware
 app.use(
 	cors({
-		origin: "http://localhost:3000", // ✅ explicitly allow frontend
+		origin: [
+			"http://localhost:3000",
+			"https://capstone-industry-project-frontend-8g3tzephz.vercel.app",
+		], // ✅ explicitly allow frontend
 		credentials: true,
 	})
 );
